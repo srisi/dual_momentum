@@ -17,3 +17,33 @@ code {
   padding: 4px;
   margin-bottom: 1px;
 }
+
+.input_ticker{
+    flex: 1 1 9rem !important;
+}
+
+.input_duration{
+    flex: 1 1 9rem !important;
+}
+
+.dual_mom_buttons{
+    width: 100%;
+}
+
+.dual_mom_buttons label{
+    padding-right: 4px;
+    padding-left: 4px;
+}
+
+label {
+    cursor: pointer;
+/*//    font-size: 0.9rem !important;*/
+}
+
+.button_remove{
+    float: right;
+}
+
+.input-group-text{
+    width: 6rem;
+}

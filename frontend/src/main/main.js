@@ -8,102 +8,6 @@ import { getCookie } from '../common'
 import { create_graph, update_graph_color } from './graph.js'
 import './main.css';
 
-
-/***************************************************************************************************
- * Controls and settings components for the visualization
- **************************************************************************************************/
-class Controls extends React.Component {
-    constructor(props) {
-        super(props);
-    }
-
-    render() {
-        const checked = this.props.config.color === 'blue';
-        return (
-            <div className="col-3">
-                <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={this.props.handle_checkbox}
-                />
-                <label>Color is blue</label>
-            </div>
-        );
-
-    }
-}
-Controls.propTypes = {
-    config: PropTypes.object.isRequired,
-    handle_checkbox: PropTypes.func.isRequired,
-};
-
-
-/***************************************************************************************************
- * Wrapper for the Visualization
- **************************************************************************************************/
-class Viz extends React.Component {
-    constructor(props) {
-        super(props);
-        this._graphRoot = React.createRef();
-    }
-
-    componentDidMount() {
-        // D3 Code to create the chart
-        create_graph(
-            this._graphRoot.current,  // current gives the DOM object (as opposed to the React ref)
-            this.props.data,
-            this.props.config,
-            this.props.handle_viz_events,
-        );
-    }
-
-    componentDidUpdate() {
-        // D3 Code to update the chart
-        if (this.props.config.viz_update_func === 'update_graph_color') {
-            update_graph_color(
-                this._graphRoot.current,
-                this.props.data,
-                this.props.config,
-            );
-        }
-    }
-
-    render() {
-        return (
-            <div className="col-6" ref={this._graphRoot}>
-
-            </div>
-        )
-    }
-}
-Viz.propTypes = {
-    data: PropTypes.arrayOf(PropTypes.object).isRequired,
-    config: PropTypes.object.isRequired,
-    handle_viz_events: PropTypes.func,
-};
-
-/**
- * Info panel - data from the visualization
- */
-class Info extends React.Component {
-    constructor(props) {
-        super(props);
-    }
-
-    render() {
-        return (
-            <div className="col-3">
-                <p>Your mouse is {this.props.mouseover ? 'OVER' : 'NOT OVER'}  a bar on the viz!</p>
-                <p>The current viz color is {this.props.currentColor}</p>
-            </div>
-        );
-    }
-}
-Info.propTypes ={
-    mouseover: PropTypes.bool,
-    currentColor: PropTypes.string,
-};
-
 class ComponentSelector extends React.Component {
     constructor(props){
         super(props);
@@ -114,29 +18,96 @@ class ComponentSelector extends React.Component {
         for (const [_i, holding] of this.props.config.holdings.entries()) {
             holding_boxes.push(
                 <HoldingBox
-                    key={holding.ticker}
+                    key={holding.id}
                     holding={holding}
-                    handle_component_update={(percentage) =>
-                        this.props.handle_component_update(holding.id, percentage)
+                    handle_holding_update={(event) =>
+                        this.props.handle_holding_update(holding.id, event)
                     }
                 />
             );
         }
+
+        // For buy and hold, only display and use the first ticker
+        if (!this.props.config.dual_momentum){
+            holding_boxes = holding_boxes.slice(0, 1);
+        }
+
         return (
-            <div>
+            <div className="dm_component col-lg-4 col-md-6 col-sm-6 col-xs-12">
                 <h2>{this.props.config.name}</h2>
-                <table>
-                    <tbody>
-                        {holding_boxes}
-                    </tbody>
-                </table>
+
+                {/*Buy and Hold Selector */}
+                <div className="btn-group btn-group-toggle mb-1 dual_mom_buttons"
+                    data-toggle="buttons">
+                    <label className={this.props.config.dual_momentum ? "btn btn-primary active":
+                        "btn btn-outline-secondary"}>
+                        <input type="radio" name="dual_momentum"
+                            onChange={(e) => this.props.handle_component_update(e)}
+                        />
+                        Dual Momentum
+                    </label>
+                    <label className={!this.props.config.dual_momentum ? "btn btn-primary active":
+                        "btn btn-outline-secondary"}>
+                        <input type="radio" name="dual_momentum"
+                            onChange={(e) => this.props.handle_component_update(e)}
+                        />
+                        Buy and Hold
+                    </label>
+                </div>
+
+                {/*Weight selector*/}
+                <div className="mb-1">
+                    <div className="input-group">
+                        <div className="input-group-prepend">
+                            <span className="input-group-text">Weight: </span>
+                        </div>
+                        <input className="form-control"
+                            type="number" name="weight" min="0" max="100"
+                            value={this.props.config.weight}
+                            onChange={(e) => this.props.handle_component_update(e)}
+                        />
+                        <div className="input-group-append">
+                            <span className="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div className="invalid-feedback">Example invalid feedback text</div>
+                </div>
+
+                {/*Duration selector*/}
+                <div className="input-group mb-1">
+                    <div className="input-group-prepend">
+                        <span className="input-group-text">Duration: </span>
+                    </div>
+                    <input className="form-control"
+                        disabled={!this.props.config.dual_momentum}
+                        type="number" name="duration" min="1" max="24"
+                        value={this.props.config.duration}
+                        onChange={(e) => this.props.handle_component_update(e)}
+                    />
+                    <div className="input-group-append">
+                        <span className="input-group-text">months</span>
+                    </div>
+                </div>
+
+
+                <div>{holding_boxes}</div>
+                {(this.props.config.dual_momentum || this.props.config.holdings.length === 0) ?
+                    <button type="button" className="btn btn-outline-primary"
+                        onClick={() => this.props.modify_number_of_holdings(1)}
+                    >Add Ticker</button> : null
+                }
+                <button type="button" className="btn btn-outline-primary button_remove"
+                    onClick={() => this.props.modify_number_of_holdings(-1)}
+                >Remove {this.props.config.holdings.length > 0 ? 'Ticker': 'Part'}</button>
             </div>
         )
     }
 }
 ComponentSelector.propTypes={
     config: PropTypes.object,
-    handle_component_update: PropTypes.func
+    handle_component_update: PropTypes.func,
+    handle_holding_update: PropTypes.func,
+    modify_number_of_holdings: PropTypes.func
 };
 
 class HoldingBox extends React.Component {
@@ -146,29 +117,22 @@ class HoldingBox extends React.Component {
 
     render(){
         return (
-            <tr>
-                <td>
-                    <input type="text" name="ticker" maxLength="6" size="6"
-                        value={this.props.holding.ticker}
-                        onChange={(e) => this.props.handle_component_update(e)}
-                    />
-                </td>
-                <td>{this.props.holding.name}</td>
-                <td>
-
-                    <input
-                        type="number" name="percentage" min="0" max="100"
-                        value={this.props.holding.percentage}
-                        onChange={(e) => this.props.handle_component_update(e)}
-                    />
-                </td>
-            </tr>
+            <div className="input-group mb-1">
+                <div className="input-group-prepend">
+                    <span className="input-group-text">Ticker {this.props.holding.id + 1}: </span>
+                </div>
+                <input className="form-control input_ticker"
+                    type="text" name="ticker" maxLength="20" size="20"
+                    value={this.props.holding.ticker}
+                    onChange={(e) => this.props.handle_holding_update(e)}
+                />
+            </div>
         )
     }
 }
 HoldingBox.propTypes={
     holding: PropTypes.object,
-    handle_component_update: PropTypes.func
+    handle_holding_update: PropTypes.func
 };
 
 
@@ -186,12 +150,31 @@ class MainView extends React.Component {
             },  // initial configuration for the viz
             data: null,  // data for the viz
             mouseover: false,  // info panel state (based on callbacks from viz)
-            components: [
+            dm_components: [
                 {
                     'id': 0,
                     'name': 'Equities',
+                    'weight': 50,
+                    'dual_momentum': true,
+                    'duration': 12,
                     'holdings': [
-                        {'id': 0, 'ticker': 'VTI', 'name': 'U.S. Stock Market', 'percentage': 20}
+                        {'id': 0, 'ticker': 'VTI'},
+                        {'id': 1, 'ticker': 'IEFA'},
+                        {'id': 2, 'ticker': 'IEMG'},
+                        {'id': 3, 'ticker': ''}
+                    ]
+                },
+                {
+                    'id': 1,
+                    'name': 'REITs',
+                    'weight': 50,
+                    'dual_momentum': true,
+                    'duration': 12,
+                    'holdings': [
+                        {'id': 0, 'ticker': 'VNQ'},
+                        {'id': 1, 'ticker': 'VNQI'},
+                        {'id': 2, 'ticker': 'REM'},
+                        {'id': 3, 'ticker': ''}
                     ]
                 }
             ]
@@ -217,44 +200,94 @@ class MainView extends React.Component {
             });
     }
 
-    /**
-     * Calls when checkbox is changed.  Changes the color from blue to red or vice versa.
-     */
-    handle_checkbox() {
-        // "..." is the 'spread' operator - this is a copy
-        const config = {...this.state.config};
-        if (config.color === 'blue') {
-            config.color = 'red';
-        } else {
-            config.color = 'blue'
-        }
-        config.viz_update_func = 'update_graph_color';
-        this.setState({
-            config: config,
-        })
-    }
 
-    /**
-     * Handles a visualization event
-     *
-     * @param event_name: String
-     */
-    handle_viz_events(event_name) {
-        if (event_name === "mouseover") {
-            this.setState({mouseover: true});
-        } else if (event_name === "mouseout") {
-            this.setState({mouseover: false});
-        }
-    }
 
-    update_components(component_id, holding_id, event){
+    handle_holding_update(component_id, holding_id, event){
         console.log("update", event.target);
-        let components = this.state.components;
-        components[component_id]['holdings'][holding_id][event.target.name] = event.target.value;
-        this.setState({components: components});
-        console.log(this.state.components[0]['holdings'][0])
+        let dm_components = this.state.dm_components;
+        dm_components[component_id]['holdings'][holding_id][event.target.name] = event.target.value;
+        this.setState({dm_components: dm_components});
     }
 
+    handle_component_update(component_id, event){
+        let dm_components = this.state.dm_components;
+        let dm_component = this.state.dm_components[component_id];
+
+        console.log(event.target);
+        if (event.target.name === 'dual_momentum'){
+            dm_component['dual_momentum'] = !dm_component['dual_momentum']
+        } else {
+            dm_components[component_id][event.target.name] = event.target.value;
+        }
+        this.setState({dm_components: dm_components});
+    }
+
+
+    modify_number_of_components(i, component_id){
+        // Add or remove components
+
+        let dm_components = this.state.dm_components;
+
+        // add new component
+        if (i === 1) {
+            if (dm_components.length === 0) { //if no component currently, add new one
+                dm_components = [{
+                    'id': 0,
+                    'name': 'Name',
+                    'weight': 50,
+                    'duration': 12,
+                    'dual_momentum': true,
+                    'holdings': [{'id': 0, 'ticker': ''}]
+                }];
+            } else {
+                dm_components.push({
+                    'id': 10,
+                    'name': 'Name',
+                    'weight': 50,
+                    'dual_momentum': true,
+                    'duration': 12,
+                    'holdings': [{'id': 0, 'ticker': ''}]
+                })
+            }
+
+        // remove component
+        } else {
+            console.log(component_id, dm_components.slice(0, component_id), dm_components.slice(component_id +1));
+            dm_components = dm_components.slice(0, component_id).concat(dm_components.slice(component_id +1));
+        }
+
+        this.setState({dm_components: dm_components});
+
+    }
+
+    modify_number_of_holdings(i, component_id) {
+        let dm_components = this.state.dm_components;
+
+        // add new holding
+        if (i === 1) {
+            dm_components[component_id]['holdings'].push({
+                'id': dm_components[component_id]['holdings'].length,
+                'ticker': '', 'percentage': 0
+            });
+        //remove holding
+        } else {
+            let holdings = dm_components[component_id]['holdings'];
+            if (holdings.length > 0) {
+
+                // if dual momentum mode, remove last holding
+                if (dm_components[component_id]['dual_momentum']) {
+                    holdings = holdings.slice(0, -1);
+                } else { // if buy and hold, remove the only remaining holding
+                    holdings = [];
+                }
+                dm_components[component_id]['holdings'] = holdings;
+            } else {
+                this.modify_number_of_components(-1, component_id);
+                return
+            }
+        }
+        this.setState({dm_components: dm_components});
+    }
 
 
     /**
@@ -264,32 +297,35 @@ class MainView extends React.Component {
      */
     render() {
         if (this.state.data) {
-            return (
 
+            let dm_components = [];
+            for (const [component_id, _d] of this.state.dm_components.entries()) {
+                dm_components.push(
+                    <ComponentSelector
+                        key={component_id}
+                        config={this.state.dm_components[component_id]}
+                        handle_holding_update={(holding_id, event) =>{
+                            this.handle_holding_update(component_id, holding_id, event)
+                        }}
+                        handle_component_update={(event) => {
+                            this.handle_component_update(component_id, event)
+                        }}
+                        modify_number_of_holdings={(i) => {
+                            this.modify_number_of_holdings(i, component_id)
+                        }}
+                    />
+                )
+            }
+
+            return (
                 <div className="container">
                     <div className="row">
-                        <Controls
-                            handle_checkbox={() => this.handle_checkbox()}
-                            config={this.state.config}
-                        />
-                        <Viz
-                            data={this.state.data}
-                            config={this.state.config}
-                            handle_viz_events={(event_name) => this.handle_viz_events(event_name)}
-                        />
-                        <Info
-                            mouseover={this.state.mouseover}
-                            currentColor={this.state.config.color}
-                        />
-                    </div>
-
-                    <div className="row">
-                        <ComponentSelector
-                            config={this.state.components[0]}
-                            handle_component_update={(holding_id, event) =>{
-                                this.update_components(0, holding_id, event)
-                            }}
-                        />
+                        {dm_components}
+                        <div className="col-sm-3">
+                            <button type="button" className="btn btn-outline-success"
+                                onClick={() => this.modify_number_of_components(1)}
+                            >Add Category</button>
+                        </div>
                     </div>
                 </div>
             );
