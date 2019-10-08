@@ -8,6 +8,12 @@ import { getCookie } from '../common'
 import { create_graph, update_graph_color } from './graph.js'
 import './main.css';
 
+class MainInterface extends React.Component {
+    constructor(props){
+        super(props)
+    }
+}
+
 class ComponentSelector extends React.Component {
     constructor(props){
         super(props);
@@ -32,6 +38,9 @@ class ComponentSelector extends React.Component {
             holding_boxes = holding_boxes.slice(0, 1);
         }
 
+        console.log(this.props.total_allocated_weight, this.props.total_allocated_weight === 100);
+
+
         return (
             <div className="dm_component col-lg-4 col-md-6 col-sm-6 col-xs-12">
                 <h2>{this.props.config.name}</h2>
@@ -55,13 +64,58 @@ class ComponentSelector extends React.Component {
                     </label>
                 </div>
 
+                {/*Number of holdings selector*/}
+                <div className="input-group mb-1">
+                    <div className="input-group-prepend">
+                        <span className="input-group-text">Number of holdings: </span>
+                    </div>
+                    <input
+                        className={(
+                            [1,2].includes(this.props.config.max_holdings) ||
+                                !this.props.config.dual_momentum) ?
+                            "form-control" : "form-control is-invalid"}
+                        disabled={!this.props.config.dual_momentum}
+                        type="number" name="max_holdings" min="1" max="2"
+                        value={this.props.config.dual_momentum ? this.props.config.max_holdings : ""}
+                        onChange={(e) => this.props.handle_component_update(e)}
+                    />
+                    <div className="invalid-feedback">
+                            Number of holdings per category has to be 1 or 2.
+                    </div>
+                </div>
+
+                {/*Duration selector*/}
+                <div className="input-group mb-1">
+                    <div className="input-group-prepend">
+                        <span className="input-group-text rem-6">Duration: </span>
+                    </div>
+                    <input
+                        className={!this.props.config.dual_momentum ||
+                        (this.props.config.duration >= 1 && this.props.config.duration <= 24) ?
+                            "form-control" : "form-control is-invalid"}
+                        disabled={!this.props.config.dual_momentum}
+                        type="number" name="duration" min="1" max="24"
+                        value={this.props.config.dual_momentum ? this.props.config.duration : ""}
+                        onChange={(e) => this.props.handle_component_update(e)}
+                    />
+                    <div className="input-group-append">
+                        <span className="input-group-text">months</span>
+                    </div>
+                    <div className="invalid-feedback">
+                            Duration has to be between 1 and 24 months.
+                    </div>
+                </div>
+
+
                 {/*Weight selector*/}
                 <div className="mb-1">
                     <div className="input-group">
                         <div className="input-group-prepend">
-                            <span className="input-group-text">Weight: </span>
+                            <span className="input-group-text rem-6">Weight: </span>
                         </div>
-                        <input className="form-control"
+                        <input
+                            className={this.props.total_allocated_weight === 100 ?
+                                "form-control" : "form-control is-invalid"}
                             type="number" name="weight" min="0" max="100"
                             value={this.props.config.weight}
                             onChange={(e) => this.props.handle_component_update(e)}
@@ -69,26 +123,11 @@ class ComponentSelector extends React.Component {
                         <div className="input-group-append">
                             <span className="input-group-text">%</span>
                         </div>
-                    </div>
-                    <div className="invalid-feedback">Example invalid feedback text</div>
-                </div>
-
-                {/*Duration selector*/}
-                <div className="input-group mb-1">
-                    <div className="input-group-prepend">
-                        <span className="input-group-text">Duration: </span>
-                    </div>
-                    <input className="form-control"
-                        disabled={!this.props.config.dual_momentum}
-                        type="number" name="duration" min="1" max="24"
-                        value={this.props.config.duration}
-                        onChange={(e) => this.props.handle_component_update(e)}
-                    />
-                    <div className="input-group-append">
-                        <span className="input-group-text">months</span>
+                        <div className="invalid-feedback">
+                            Total weights need to add to 100%.
+                        </div>
                     </div>
                 </div>
-
 
                 <div>{holding_boxes}</div>
                 {(this.props.config.dual_momentum || this.props.config.holdings.length === 0) ?
@@ -105,6 +144,7 @@ class ComponentSelector extends React.Component {
 }
 ComponentSelector.propTypes={
     config: PropTypes.object,
+    total_allocated_weight: PropTypes.number,
     handle_component_update: PropTypes.func,
     handle_holding_update: PropTypes.func,
     modify_number_of_holdings: PropTypes.func
@@ -119,7 +159,7 @@ class HoldingBox extends React.Component {
         return (
             <div className="input-group mb-1">
                 <div className="input-group-prepend">
-                    <span className="input-group-text">Ticker {this.props.holding.id + 1}: </span>
+                    <span className="input-group-text rem-6">Ticker {this.props.holding.id + 1}: </span>
                 </div>
                 <input className="form-control input_ticker"
                     type="text" name="ticker" maxLength="20" size="20"
@@ -150,6 +190,27 @@ class MainView extends React.Component {
             },  // initial configuration for the viz
             data: null,  // data for the viz
             mouseover: false,  // info panel state (based on callbacks from viz)
+            dm_config: {
+                'leverage': 1.0,
+                'borrowing_costs_above_libor': 0.015,
+                'costs_per_trade': 0.001,
+                'start_year': 1980,
+
+                'simulate_taxes': true,
+                'short_term_cap_gains_rate': 0.34,
+                'long_term_cap_gains_rate': 0.201,
+                'munis_state_rate': 0.121,
+                'treasuries_income_rate': 0.0982,
+                'gld_lt_rate': 0.201,
+                'money_market_holding': 'VGIT',
+                'momentum_leverages': {
+                    'months_for_leverage': 3,
+                    'config': {
+                        0.8: -0.3,  0.85: -0.3,    0.90: -0.2, 0.95: -0.2,
+                        1.30: 0.2,  1.20:  0.1,  1.15:  0.1,    1.10:  0.0, 1.05:  0.0
+                    }
+                }
+            },
             dm_components: [
                 {
                     'id': 0,
@@ -157,6 +218,7 @@ class MainView extends React.Component {
                     'weight': 50,
                     'dual_momentum': true,
                     'duration': 12,
+                    'max_holdings': 2,
                     'holdings': [
                         {'id': 0, 'ticker': 'VTI'},
                         {'id': 1, 'ticker': 'IEFA'},
@@ -170,6 +232,7 @@ class MainView extends React.Component {
                     'weight': 50,
                     'dual_momentum': true,
                     'duration': 12,
+                    'max_holdings': 1,
                     'holdings': [
                         {'id': 0, 'ticker': 'VNQ'},
                         {'id': 1, 'ticker': 'VNQI'},
@@ -216,8 +279,10 @@ class MainView extends React.Component {
         console.log(event.target);
         if (event.target.name === 'dual_momentum'){
             dm_component['dual_momentum'] = !dm_component['dual_momentum']
-        } else {
-            dm_components[component_id][event.target.name] = event.target.value;
+        } else if (event.target.name === 'weight') {
+            dm_components[component_id][event.target.name] = parseFloat(event.target.value);
+        } else if (event.target.name === 'duration' || event.target.name === 'max_holdings'){
+            dm_components[component_id][event.target.name] = parseInt(event.target.value);
         }
         this.setState({dm_components: dm_components});
     }
@@ -237,6 +302,7 @@ class MainView extends React.Component {
                     'weight': 50,
                     'duration': 12,
                     'dual_momentum': true,
+                    'max_holdings': 1,
                     'holdings': [{'id': 0, 'ticker': ''}]
                 }];
             } else {
@@ -244,6 +310,7 @@ class MainView extends React.Component {
                     'id': 10,
                     'name': 'Name',
                     'weight': 50,
+                    'max_holdings': 1,
                     'dual_momentum': true,
                     'duration': 12,
                     'holdings': [{'id': 0, 'ticker': ''}]
@@ -290,13 +357,15 @@ class MainView extends React.Component {
     }
 
 
-    /**
-     * Render the app on the page
-     *
-     * @returns {Node}
-     */
+
     render() {
         if (this.state.data) {
+
+            // get total weight allocated (should be 100)
+            let total_allocated_weight = 0;
+            for (const[_i, component] of this.state.dm_components.entries()){
+                total_allocated_weight += component.weight;
+            }
 
             let dm_components = [];
             for (const [component_id, _d] of this.state.dm_components.entries()) {
@@ -304,6 +373,7 @@ class MainView extends React.Component {
                     <ComponentSelector
                         key={component_id}
                         config={this.state.dm_components[component_id]}
+                        total_allocated_weight={total_allocated_weight}
                         handle_holding_update={(holding_id, event) =>{
                             this.handle_holding_update(component_id, holding_id, event)
                         }}
