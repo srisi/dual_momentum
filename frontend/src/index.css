@@ -47,3 +47,20 @@ label {
 .rem-6{
     width: 6rem;
 }
+
+.rem-5{
+    width: 5rem;
+}
+
+.rem-14{
+    width: 14rem;
+}
+
+.tax_rate_selector{
+    display: inline-flex;
+    width: 100%;
+}
+
+.tax_type_name {
+    flex: 1 1 10rem;
+}
