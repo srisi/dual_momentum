@@ -62,5 +62,5 @@ label {
 }
 
 .tax_type_name {
-    flex: 1 1 10rem;
+    width: 9.5rem;
 }

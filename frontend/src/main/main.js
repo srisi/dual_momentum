@@ -14,31 +14,61 @@ class MainInterface extends React.Component {
     }
 
     render(){
+        const leverage = this.props.config.leverage;
 
+        const borrowing_costs_selector=[];
 
         return(
-            <div className="col-md-12">
-
-                {/*Taxes Selector*/}
-                <div className="btn-group btn-group-toggle mb-1 dual_mom_buttons"
-                    data-toggle="buttons">
-                    <div className="input-group-prepend">
-                        <span className="input-group-text">Simulate Taxes: </span>
+            <div>
+                <div className="row">
+                    <div className={"col-12"}>
+                        <h2>Configuration</h2>
                     </div>
-                    <label className={this.props.config.simulate_taxes ? "btn btn-primary active":
-                        "btn btn-outline-secondary"}>
-                        <input type="radio" name="simulate_taxes"
-                            onChange={(e) => this.props.handle_config_update(e)}
-                        />
-                        Yes
-                    </label>
-                    <label className={!this.props.config.simulate_taxes ? "btn btn-primary active":
-                        "btn btn-outline-secondary"}>
-                        <input type="radio" name="simulate_taxes"
-                            onChange={(e) => this.props.handle_config_update(e)}
-                        />
-                        No
-                    </label>
+                </div>
+
+                <div className="row">
+                    {/*Number of holdings selector*/}
+                    <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                        <div className="input-group input-group-sm mb-1">
+                            <div className="input-group-prepend">
+                                <span className="input-group-text">Leverage </span>
+                            </div>
+                            <input
+                                className={"form-control" + ((leverage > 0.00 && leverage < 4)
+                                    ? "" : "is-invalid")}
+                                type="number" name="leverage" min="0" max="4" step={0.01}
+                                value={leverage}
+                                onChange={(e) => this.props.handle_config_update(e)}
+                            />
+                            <div className="invalid-feedback">
+                                    Leverage has to be between 0 and 4.
+                            </div>
+                        </div>
+                    </div>
+
+                    {/*Taxes Selector*/}
+                    <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                        <div className={"btn-group btn-group-sm btn-group-toggle mb-1 " +
+                            "dual_mom_buttons input-group input-group-sm"} data-toggle="buttons">
+                            <div className="input-group-prepend">
+                                <span className="input-group-text">Simulate Taxes: </span>
+                            </div>
+                            <label className={"btn " + (this.props.config.simulate_taxes ?
+                                "btn-primary active" : "btn-outline-secondary")}>
+                                <input type="radio" name="simulate_taxes"
+                                    onChange={(e) => this.props.handle_config_update(e)}
+                                />
+                                Yes
+                            </label>
+                            <label className={"btn " + (!this.props.config.simulate_taxes ?
+                                "btn-primary active" : "btn btn-outline-secondary")}>
+                                <input type="radio" name="simulate_taxes"
+                                    onChange={(e) => this.props.handle_config_update(e)}
+                                />
+                                No
+                            </label>
+                        </div>
+                    </div>
                 </div>
                 <TaxConfig
                     config={this.props.config}
@@ -52,7 +82,6 @@ class MainInterface extends React.Component {
 }
 MainInterface.propTypes={
     config: PropTypes.object.isRequired,
-
     handle_config_update: PropTypes.func.isRequired,
     handle_tax_rate_update: PropTypes.func.isRequired,
 };
@@ -67,21 +96,38 @@ class TaxConfig extends React.Component{
         if (this.props.config.simulate_taxes){
             let selectors = [];
             for (const [tax_type, _v] of Object.entries(this.props.config.tax_rates)){
+                const tax_name = this.props.config.tax_rates[tax_type]['name'];
+                const tax_rate = this.props.config.tax_rates[tax_type]['rate'];
+                const rate_valid = (tax_rate >= 0 && tax_rate <= 100);
+                console.log("valid", rate_valid);
                 selectors.push(
-                    <TaxRateSelector
-                        key={this.props.config.tax_rates[tax_type]['name']}
-                        name={this.props.config.tax_rates[tax_type]['name']}
-                        rate={this.props.config.tax_rates[tax_type]['rate']}
-                        update_tax_rate={(rate) => this.props.handle_tax_rate_update(tax_type, rate)}
-                    />
-                );
+
+                    <div className="col-xl-3 col-lg-4 col-md-6 col-sm-12 col-xs-12">
+                        <div className="tax_rate_selector input-group input-group-sm">
+                            <div className="input-group-prepend">
+                                <span className="input-group-text tax_type_name">{tax_name}</span>
+                            </div>
+                            <input
+                                className={"form-control rem-5 " + ((tax_rate >= 0 && tax_rate <= 100) ? "" : "is-invalid")}
+                                type="number" name={tax_type} min="0" max="100"
+                                value={tax_rate}
+                                onChange={(e) => this.props.handle_tax_rate_update(tax_type,
+                                    e.target.value)}
+                            />
+                            <div className="input-group-append">
+                                <span className="input-group-text">%</span>
+                            </div>
+                            <div className="invalid-feedback">
+                                    Tax percentage needs to be between 0 and 100.
+                            </div>
+                        </div>
+                    </div>
+                )
             }
 
             return(
                 <div className="row">
-                    <div className="input-group mb-1">
-                        {selectors}
-                    </div>
+                    {selectors}
                 </div>
             )
         } else {
@@ -94,44 +140,6 @@ TaxConfig.propTypes={
     config: PropTypes.object.isRequired,
     handle_config_update: PropTypes.func.isRequired,
     handle_tax_rate_update: PropTypes.func.isRequired,
-};
-
-class TaxRateSelector extends React.Component{
-    constructor(props){
-        super(props)
-    }
-
-    render(){
-        return(
-            <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
-                <div className="tax_rate_selector">
-                    <div className="input-group-prepend rem-14">
-                        <span className="input-group-text tax_type_name">{this.props.name}</span>
-                    </div>
-                    <input
-                        className="rem-5 form-control"
-                        // className={!this.props.config.dual_momentum ||
-                        // (this.props.config.lookback >= 1 && this.props.config.lookback <= 24) ?
-                        //     "form-control" : "form-control is-invalid"}
-                        type="number" name={this.props.rate} min="0" max="100"
-                        value={this.props.rate}
-                        onChange={(e) => this.props.update_tax_rate(e.target.value)}
-                    />
-                    <div className="input-group-append">
-                        <span className="input-group-text">%</span>
-                    </div>
-                    <div className="invalid-feedback">
-                            Lookback has to be between 1 and 24 months.
-                    </div>
-                </div>
-            </div>
-        )
-    }
-}
-TaxRateSelector.propTypes={
-    name: PropTypes.string.isRequired,
-    rate: PropTypes.number.isRequired,
-    update_tax_rate: PropTypes.func.isRequired,
 };
 
 class ComponentSelector extends React.Component {
@@ -162,11 +170,11 @@ class ComponentSelector extends React.Component {
 
 
         return (
-            <div className="dm_component col-lg-4 col-md-6 col-sm-6 col-xs-12">
+            <div className="dm_component col-xl-3 col-lg-4 col-md-4 col-sm-6 col-xs-12">
                 <h2>{this.props.config.name}</h2>
 
                 {/*Buy and Hold Selector */}
-                <div className="btn-group btn-group-toggle mb-1 dual_mom_buttons"
+                <div className="btn-group btn-group-sm btn-group-toggle mb-1 dual_mom_buttons"
                     data-toggle="buttons">
                     <label className={this.props.config.dual_momentum ? "btn btn-primary active":
                         "btn btn-outline-secondary"}>
@@ -185,15 +193,14 @@ class ComponentSelector extends React.Component {
                 </div>
 
                 {/*Number of holdings selector*/}
-                <div className="input-group mb-1">
+                <div className="input-group input-group-sm mb-1">
                     <div className="input-group-prepend">
                         <span className="input-group-text">Number of holdings: </span>
                     </div>
                     <input
-                        className={(
+                        className={"form-control" + ((
                             [1,2].includes(this.props.config.max_holdings) ||
-                                !this.props.config.dual_momentum) ?
-                            "form-control" : "form-control is-invalid"}
+                                !this.props.config.dual_momentum) ? "" : " is-invalid")}
                         disabled={!this.props.config.dual_momentum}
                         type="number" name="max_holdings" min="1" max="2"
                         value={this.props.config.dual_momentum ? this.props.config.max_holdings : ""}
@@ -205,7 +212,7 @@ class ComponentSelector extends React.Component {
                 </div>
 
                 {/*Lookback selector*/}
-                <div className="input-group mb-1">
+                <div className="input-group input-group-sm mb-1">
                     <div className="input-group-prepend">
                         <span className="input-group-text rem-6">Lookback: </span>
                     </div>
@@ -229,7 +236,7 @@ class ComponentSelector extends React.Component {
 
                 {/*Weight selector*/}
                 <div className="mb-1">
-                    <div className="input-group">
+                    <div className="input-group input-group-sm">
                         <div className="input-group-prepend">
                             <span className="input-group-text rem-6">Weight: </span>
                         </div>
@@ -277,7 +284,7 @@ class HoldingBox extends React.Component {
 
     render(){
         return (
-            <div className="input-group mb-1">
+            <div className="input-group input-group-sm mb-1">
                 <div className="input-group-prepend">
                     <span className="input-group-text rem-6">Ticker {this.props.holding.id + 1}: </span>
                 </div>
@@ -311,15 +318,18 @@ class MainView extends React.Component {
             data: null,  // data for the viz
             mouseover: false,  // info panel state (based on callbacks from viz)
             dm_config: {
-                'leverage': 1.0,
-                'borrowing_costs_above_libor': 0.015,
+
                 'costs_per_trade': 0.001,
                 'start_year': 1980,
 
+                'leverage': 1.0,
+                'borrowing_costs_above_libor': 0.015,
+
+
                 'simulate_taxes': true,
                 'tax_rates': {
-                    'short_term_cap_gains_rate': {'name': 'Short Term Capital Gains', 'rate':34},
-                    'long_term_cap_gains_rate': {'name': 'Long Term Capital Gains', 'rate': 20.1},
+                    'short_term_cap_gains_rate': {'name': 'Short Term Cap Gains', 'rate':34},
+                    'long_term_cap_gains_rate': {'name': 'Long Term Cap Gains', 'rate': 20.1},
                     'munis_state_rate': {'name': 'Muni Bonds Income ', 'rate': 12.1},
                     'treasuries_income_rate': {'name': 'Treasuries Income ', 'rate': 9.82},
                     // 'gld_lt_rate': {'name': 'Gold LT Capital Gains', 'rate': 20.1},
@@ -389,6 +399,8 @@ class MainView extends React.Component {
         let config = this.state.dm_config;
         if (event.target.name === 'simulate_taxes') {
             config['simulate_taxes'] = !config['simulate_taxes']
+        } else {
+            config[event.target.name] = event.target.value;
         }
 
         this.setState({config : config})
@@ -399,11 +411,11 @@ class MainView extends React.Component {
     handle_tax_rate_update(tax_type, rate) {
         let config = this.state.dm_config;
         config.tax_rates[tax_type].rate = parseFloat(rate);
-        this.setState({config: config})
+        this.setState({config: config});
+        console.log(this.state);
     }
 
     handle_holding_update(component_id, holding_id, event){
-        console.log("update", event.target);
         let dm_components = this.state.dm_components;
         dm_components[component_id]['holdings'][holding_id][event.target.name] = event.target.value;
         this.setState({dm_components: dm_components});
@@ -435,7 +447,7 @@ class MainView extends React.Component {
                 dm_components = [{
                     'id': 0,
                     'name': 'Name',
-                    'weight': 50,
+                    'weight': 0,
                     'lookback': 12,
                     'dual_momentum': true,
                     'max_holdings': 1,
@@ -445,7 +457,7 @@ class MainView extends React.Component {
                 dm_components.push({
                     'id': 10,
                     'name': 'Name',
-                    'weight': 50,
+                    'weight': 0,
                     'max_holdings': 1,
                     'dual_momentum': true,
                     'lookback': 12,
@@ -525,13 +537,11 @@ class MainView extends React.Component {
 
             return (
                 <div className="container">
-                    <div className="row">
-                        <MainInterface
-                            config={this.state.dm_config}
-                            handle_config_update={(e) => this.handle_config_update(e)}
-                            handle_tax_rate_update={(tax_type, rate) => this.handle_tax_rate_update(tax_type, rate)}
-                        />
-                    </div>
+                    <MainInterface
+                        config={this.state.dm_config}
+                        handle_config_update={(e) => this.handle_config_update(e)}
+                        handle_tax_rate_update={(tax_type, rate) => this.handle_tax_rate_update(tax_type, rate)}
+                    />
                     <div className="row">
                         {dm_components}
                         <div className="col-sm-3">
