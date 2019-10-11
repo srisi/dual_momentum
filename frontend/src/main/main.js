@@ -15,8 +15,40 @@ class MainInterface extends React.Component {
 
     render(){
         const leverage = this.props.config.leverage;
+        const borrowing_costs = this.props.config.borrowing_costs_above_libor;
+        const start_year = this.props.config.start_year;
 
-        const borrowing_costs_selector=[];
+        console.log((borrowing_costs >= 0.00 &&   borrowing_costs < 100));
+
+        let borrowing_costs_selector = null;
+        if (leverage > 1) {
+            borrowing_costs_selector = [
+                <div key="borrow" className="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                    <div className="input-group input-group-sm mb-1">
+                        <div className="input-group-prepend">
+                            <span className="input-group-text tax_type_name">
+                                Margin rate (+LIBOR)
+                            </span>
+                        </div>
+                        <input
+                            className={"form-control rem-5" + ((borrowing_costs >= 0.00 &&
+                                borrowing_costs < 100) ? "" : "is-invalid")}
+                            type="number" name="borrowing_costs_above_libor"
+                            min={0} max={100} step={0.01}
+                            value={borrowing_costs}
+                            onChange={(e) => this.props.handle_config_update(e)}
+                        />
+                        <div className="input-group-append">
+                            <span className="input-group-text">%</span>
+                        </div>
+                        <div className="invalid-feedback">
+                            Borrowing costs have to be between 0% and 100%.
+                        </div>
+                    </div>
+                </div>
+            ];
+        }
+
 
         return(
             <div>
@@ -27,14 +59,34 @@ class MainInterface extends React.Component {
                 </div>
 
                 <div className="row">
-                    {/*Number of holdings selector*/}
-                    <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+
+                    {/*Start Year Selector*/}
+                    <div className="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                        <div className="input-group input-group-sm mb-1">
+                            <div className="input-group-prepend">
+                                <span className="input-group-text">Start Year </span>
+                            </div>
+                            <input
+                                className={"form-control " + ((start_year >= 1980  &&
+                                    start_year < 2018) ? "" : "is-invalid")}
+                                type="number" name="start_year" min="1980" max="2018" step={1}
+                                value={start_year}
+                                onChange={(e) => this.props.handle_config_update(e)}
+                            />
+                            <div className="invalid-feedback">
+                                    Start year has to be between 1980 and 2018.
+                            </div>
+                        </div>
+                    </div>
+
+                    {/*Leverage Selector*/}
+                    <div className="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                         <div className="input-group input-group-sm mb-1">
                             <div className="input-group-prepend">
                                 <span className="input-group-text">Leverage </span>
                             </div>
                             <input
-                                className={"form-control" + ((leverage > 0.00 && leverage < 4)
+                                className={"form-control " + ((leverage > 0.00 && leverage < 4)
                                     ? "" : "is-invalid")}
                                 type="number" name="leverage" min="0" max="4" step={0.01}
                                 value={leverage}
@@ -46,8 +98,12 @@ class MainInterface extends React.Component {
                         </div>
                     </div>
 
+
+                    {/*Borrowing Costs*/}
+                    {borrowing_costs_selector}
+
                     {/*Taxes Selector*/}
-                    <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                    <div className="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                         <div className={"btn-group btn-group-sm btn-group-toggle mb-1 " +
                             "dual_mom_buttons input-group input-group-sm"} data-toggle="buttons">
                             <div className="input-group-prepend">
@@ -71,6 +127,7 @@ class MainInterface extends React.Component {
                     </div>
                 </div>
                 <TaxConfig
+                    key={0}
                     config={this.props.config}
                     handle_config_update={(e) => this.props.handle_config_update(e)}
                     handle_tax_rate_update={(tax_type, rate) =>
@@ -95,14 +152,13 @@ class TaxConfig extends React.Component{
     render() {
         if (this.props.config.simulate_taxes){
             let selectors = [];
-            for (const [tax_type, _v] of Object.entries(this.props.config.tax_rates)){
+            for (const [tax_type, _i] of Object.entries(this.props.config.tax_rates)){
                 const tax_name = this.props.config.tax_rates[tax_type]['name'];
                 const tax_rate = this.props.config.tax_rates[tax_type]['rate'];
                 const rate_valid = (tax_rate >= 0 && tax_rate <= 100);
-                console.log("valid", rate_valid);
                 selectors.push(
 
-                    <div className="col-xl-3 col-lg-4 col-md-6 col-sm-12 col-xs-12">
+                    <div key={tax_type} className="col-xl-3 col-lg-4 col-md-6 col-sm-12 col-xs-12">
                         <div className="tax_rate_selector input-group input-group-sm">
                             <div className="input-group-prepend">
                                 <span className="input-group-text tax_type_name">{tax_name}</span>
@@ -147,126 +203,161 @@ class ComponentSelector extends React.Component {
         super(props);
     }
 
-    render(){
-        let holding_boxes = [];
-        for (const [_i, holding] of this.props.config.holdings.entries()) {
-            holding_boxes.push(
-                <HoldingBox
-                    key={holding.id}
-                    holding={holding}
-                    handle_holding_update={(event) =>
-                        this.props.handle_holding_update(holding.id, event)
-                    }
-                />
-            );
-        }
+    render() {
+        // figure out if this is the final empty component
+        const is_empty_component = (!('weight' in this.props.config));
 
-        // For buy and hold, only display and use the first ticker
-        if (!this.props.config.dual_momentum){
-            holding_boxes = holding_boxes.slice(0, 1);
-        }
-
-        console.log(this.props.total_allocated_weight, this.props.total_allocated_weight === 100);
-
-
-        return (
-            <div className="dm_component col-xl-3 col-lg-4 col-md-4 col-sm-6 col-xs-12">
-                <h2>{this.props.config.name}</h2>
-
-                {/*Buy and Hold Selector */}
-                <div className="btn-group btn-group-sm btn-group-toggle mb-1 dual_mom_buttons"
-                    data-toggle="buttons">
-                    <label className={this.props.config.dual_momentum ? "btn btn-primary active":
-                        "btn btn-outline-secondary"}>
-                        <input type="radio" name="dual_momentum"
-                            onChange={(e) => this.props.handle_component_update(e)}
-                        />
-                        Dual Momentum
-                    </label>
-                    <label className={!this.props.config.dual_momentum ? "btn btn-primary active":
-                        "btn btn-outline-secondary"}>
-                        <input type="radio" name="dual_momentum"
-                            onChange={(e) => this.props.handle_component_update(e)}
-                        />
-                        Buy and Hold
-                    </label>
-                </div>
-
-                {/*Number of holdings selector*/}
-                <div className="input-group input-group-sm mb-1">
-                    <div className="input-group-prepend">
-                        <span className="input-group-text">Number of holdings: </span>
-                    </div>
-                    <input
-                        className={"form-control" + ((
-                            [1,2].includes(this.props.config.max_holdings) ||
-                                !this.props.config.dual_momentum) ? "" : " is-invalid")}
-                        disabled={!this.props.config.dual_momentum}
-                        type="number" name="max_holdings" min="1" max="2"
-                        value={this.props.config.dual_momentum ? this.props.config.max_holdings : ""}
-                        onChange={(e) => this.props.handle_component_update(e)}
+        if (is_empty_component) {
+            return (
+                <div className="col-xl-3 col-lg-4 col-md-4 col-sm-6 col-xs-12 mt-4">
+                    {/*Title / Name*/}
+                    <input className="component_title form-control component_title_new"
+                        type="text" name="name" maxLength="14" size="14" disabled
+                        value={this.props.config.name}
                     />
-                    <div className="invalid-feedback">
-                            Number of holdings per category has to be 1 or 2.
-                    </div>
-                </div>
-
-                {/*Lookback selector*/}
-                <div className="input-group input-group-sm mb-1">
-                    <div className="input-group-prepend">
-                        <span className="input-group-text rem-6">Lookback: </span>
-                    </div>
-                    <input
-                        className={!this.props.config.dual_momentum ||
-                        (this.props.config.lookback >= 1 && this.props.config.lookback <= 24) ?
-                            "form-control" : "form-control is-invalid"}
-                        disabled={!this.props.config.dual_momentum}
-                        type="number" name="lookback" min="1" max="24"
-                        value={this.props.config.dual_momentum ? this.props.config.lookback : ""}
-                        onChange={(e) => this.props.handle_component_update(e)}
-                    />
-                    <div className="input-group-append">
-                        <span className="input-group-text">months</span>
-                    </div>
-                    <div className="invalid-feedback">
-                            Lookback has to be between 1 and 24 months.
-                    </div>
-                </div>
-
-
-                {/*Weight selector*/}
-                <div className="mb-1">
-                    <div className="input-group input-group-sm">
-                        <div className="input-group-prepend">
-                            <span className="input-group-text rem-6">Weight: </span>
-                        </div>
-                        <input
-                            className={this.props.total_allocated_weight === 100 ?
-                                "form-control" : "form-control is-invalid"}
-                            type="number" name="weight" min="0" max="100"
-                            value={this.props.config.weight}
+                    {/*Add component form*/}
+                    <div className="input-group input-group-sm mb-1">
+                        <input className="form-control "
+                            type="text" name="name" maxLength="14" size="14"
+                            value={this.props.config.name}
                             onChange={(e) => this.props.handle_component_update(e)}
                         />
                         <div className="input-group-append">
-                            <span className="input-group-text">%</span>
-                        </div>
-                        <div className="invalid-feedback">
-                            Total weights need to add to 100%.
+                            <button className="btn btn-primary active" type="button"
+                                name="add_component"
+                                onClick={(e) => this.props.handle_component_update(e)}>
+                                Add Component
+                            </button>
                         </div>
                     </div>
                 </div>
+            )
+        } else {
+            let holding_boxes = [];
+            for (const [_i, holding] of this.props.config.holdings.entries()) {
+                holding_boxes.push(
+                    <HoldingBox
+                        key={holding.id}
+                        holding={holding}
+                        handle_holding_update={(event) =>
+                            this.props.handle_holding_update(holding.id, event)
+                        }
+                    />
+                );
+            }
 
-                <div>{holding_boxes}</div>
-                {(this.props.config.dual_momentum || this.props.config.holdings.length === 0) ?
-                    <button type="button" className="btn btn-outline-primary"
-                        onClick={() => this.props.modify_number_of_holdings(1)}
-                    >Add Ticker</button> : null
-                }
-                <button type="button" className="btn btn-outline-primary button_remove"
-                    onClick={() => this.props.modify_number_of_holdings(-1)}
-                >Remove {this.props.config.holdings.length > 0 ? 'Ticker': 'Part'}</button>
-            </div>
-        )
+            // For buy and hold, only display and use the first ticker
+            if (!this.props.config.dual_momentum) {
+                holding_boxes = holding_boxes.slice(0, 1);
+            }
+
+            return (
+                <div className="col-xl-3 col-lg-4 col-md-4 col-sm-6 col-xs-12 mt-4">
+
+                    {/*Title / Name*/}
+                    <input className="component_title form-control"
+                        type="text" name="name" maxLength="14" size="14"
+                        value={this.props.config.name}
+                        onChange={(e) => this.props.handle_component_update(e)}
+                    />
+
+                    {/*Buy and Hold  / Dual Momentum Selector */}
+                    <div className="btn-group btn-group-sm btn-group-toggle mb-1 dual_mom_buttons"
+                        data-toggle="buttons">
+                        <label
+                            className={this.props.config.dual_momentum ? "btn btn-primary active" :
+                                "btn btn-outline-secondary"}>
+                            <input type="radio" name="dual_momentum"
+                                onChange={(e) => this.props.handle_component_update(e)}
+                            />
+                            Dual Momentum
+                        </label>
+                        <label
+                            className={!this.props.config.dual_momentum ? "btn btn-primary active" :
+                                "btn btn-outline-secondary"}>
+                            <input type="radio" name="dual_momentum"
+                                onChange={(e) => this.props.handle_component_update(e)}
+                            />
+                            Buy and Hold
+                        </label>
+                    </div>
+
+                    {/*Number of holdings selector*/}
+                    <div className="input-group input-group-sm mb-1">
+                        <div className="input-group-prepend">
+                            <span className="input-group-text">Number of holdings: </span>
+                        </div>
+                        <input
+                            className={"form-control" + ((
+                                [1, 2].includes(this.props.config.max_holdings) ||
+                                !this.props.config.dual_momentum) ? "" : " is-invalid")}
+                            disabled={!this.props.config.dual_momentum}
+                            type="number" name="max_holdings" min="1" max="2"
+                            value={this.props.config.dual_momentum ? this.props.config.max_holdings : ""}
+                            onChange={(e) => this.props.handle_component_update(e)}
+                        />
+                        <div className="invalid-feedback">
+                            Number of holdings per category has to be 1 or 2.
+                        </div>
+                    </div>
+
+                    {/*Lookback selector*/}
+                    <div className="input-group input-group-sm mb-1">
+                        <div className="input-group-prepend">
+                            <span className="input-group-text rem-6">Lookback: </span>
+                        </div>
+                        <input
+                            className={!this.props.config.dual_momentum ||
+                            (this.props.config.lookback >= 1 && this.props.config.lookback <= 24) ?
+                                "form-control" : "form-control is-invalid"}
+                            disabled={!this.props.config.dual_momentum}
+                            type="number" name="lookback" min="1" max="24"
+                            value={this.props.config.dual_momentum ? this.props.config.lookback : ""}
+                            onChange={(e) => this.props.handle_component_update(e)}
+                        />
+                        <div className="input-group-append">
+                            <span className="input-group-text">months</span>
+                        </div>
+                        <div className="invalid-feedback">
+                            Lookback has to be between 1 and 24 months.
+                        </div>
+                    </div>
+
+
+                    {/*Weight selector*/}
+                    <div className="mb-1">
+                        <div className="input-group input-group-sm">
+                            <div className="input-group-prepend">
+                                <span className="input-group-text rem-6">Weight: </span>
+                            </div>
+                            <input
+                                className={this.props.total_allocated_weight === 100 ?
+                                    "form-control" : "form-control is-invalid"}
+                                type="number" name="weight" min="0" max="100"
+                                value={this.props.config.weight}
+                                onChange={(e) => this.props.handle_component_update(e)}
+                            />
+                            <div className="input-group-append">
+                                <span className="input-group-text">%</span>
+                            </div>
+                            <div className="invalid-feedback">
+                                Total weights need to add to 100%.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>{holding_boxes}</div>
+                    {(this.props.config.dual_momentum || this.props.config.holdings.length === 0) ?
+                        <button type="button" className="btn btn-outline-primary"
+                            onClick={() => this.props.modify_number_of_holdings(1)}
+                        >Add Ticker</button> : null
+                    }
+                    <button type="button" className="btn btn-outline-primary button_remove"
+                        onClick={() => this.props.modify_number_of_holdings(-1)}
+                    >Remove {this.props.config.holdings.length > 0 ? 'Ticker' : 'Part'}</button>
+                </div>
+            )
+        }
     }
 }
 ComponentSelector.propTypes={
@@ -319,12 +410,11 @@ class MainView extends React.Component {
             mouseover: false,  // info panel state (based on callbacks from viz)
             dm_config: {
 
-                'costs_per_trade': 0.001,
+                'costs_per_trade': 0.1,
                 'start_year': 1980,
 
                 'leverage': 1.0,
-                'borrowing_costs_above_libor': 0.015,
-
+                'borrowing_costs_above_libor': 1.5,
 
                 'simulate_taxes': true,
                 'tax_rates': {
@@ -345,7 +435,6 @@ class MainView extends React.Component {
             },
             dm_components: [
                 {
-                    'id': 0,
                     'name': 'Equities',
                     'weight': 50,
                     'dual_momentum': true,
@@ -359,7 +448,6 @@ class MainView extends React.Component {
                     ]
                 },
                 {
-                    'id': 1,
                     'name': 'REITs',
                     'weight': 50,
                     'dual_momentum': true,
@@ -371,41 +459,27 @@ class MainView extends React.Component {
                         {'id': 2, 'ticker': 'REM'},
                         {'id': 3, 'ticker': ''}
                     ]
+                },
+                {
+                    'name': '',
                 }
             ]
         };
         this.csrftoken = getCookie('csrftoken');
     }
 
-    /**
-     * Runs when the MainView item is connected to the server.
-     */
-    componentDidMount() {
-        fetch("api/people/")
-            .then((response) => {
-                // console.log(response);
-                response
-                    .json()
-                    .then((data) => {
-                        this.setState({data});
-                        // console.log(data);
-                    })
-            }).catch(() => {
-                console.log("error");
-            });
-    }
-
     handle_config_update(event){
         let config = this.state.dm_config;
-        if (event.target.name === 'simulate_taxes') {
+        const ename = event.target.name;
+        if (ename === 'simulate_taxes') {
             config['simulate_taxes'] = !config['simulate_taxes']
-        } else {
-            config[event.target.name] = event.target.value;
+        } else if (ename === 'start_year'){
+            config[ename] = parseInt(event.target.value);
+        } else if (ename === 'borrowing_costs_above_libor' || ename === 'leverage'){
+            config[ename] = parseFloat(event.target.value);
         }
 
         this.setState({config : config})
-
-
     }
 
     handle_tax_rate_update(tax_type, rate) {
@@ -422,48 +496,50 @@ class MainView extends React.Component {
     }
 
     handle_component_update(component_id, event){
-        let dm_components = this.state.dm_components;
-        let dm_component = this.state.dm_components[component_id];
+        console.log("handle component update", component_id, event.target);
 
-        if (event.target.name === 'dual_momentum'){
-            dm_component['dual_momentum'] = !dm_component['dual_momentum']
-        } else if (event.target.name === 'weight') {
-            dm_components[component_id][event.target.name] = parseFloat(event.target.value);
-        } else if (event.target.name === 'lookback' || event.target.name === 'max_holdings'){
-            dm_components[component_id][event.target.name] = parseInt(event.target.value);
+        if (event.target.name === 'add_component'){
+            this.modify_number_of_components(1, null);
+        } else {
+
+            let dm_components = this.state.dm_components;
+            let dm_component = this.state.dm_components[component_id];
+
+            if (event.target.name === 'dual_momentum') {
+                dm_component['dual_momentum'] = !dm_component['dual_momentum']
+            } else if (event.target.name === 'weight') {
+                dm_components[component_id][event.target.name] = parseFloat(event.target.value);
+            } else if (event.target.name === 'lookback' || event.target.name === 'max_holdings') {
+                dm_components[component_id][event.target.name] = parseInt(event.target.value);
+            } else if (event.target.name === 'name') {
+                dm_components[component_id][event.target.name] = event.target.value;
+            }
+            this.setState({dm_components: dm_components});
         }
-        this.setState({dm_components: dm_components});
     }
 
 
     modify_number_of_components(i, component_id){
         // Add or remove components
 
+        console.log("change components", i);
         let dm_components = this.state.dm_components;
 
         // add new component
         if (i === 1) {
-            if (dm_components.length === 0) { //if no component currently, add new one
-                dm_components = [{
-                    'id': 0,
-                    'name': 'Name',
-                    'weight': 0,
-                    'lookback': 12,
-                    'dual_momentum': true,
-                    'max_holdings': 1,
-                    'holdings': [{'id': 0, 'ticker': ''}]
-                }];
-            } else {
-                dm_components.push({
-                    'id': 10,
-                    'name': 'Name',
-                    'weight': 0,
-                    'max_holdings': 1,
-                    'dual_momentum': true,
-                    'lookback': 12,
-                    'holdings': [{'id': 0, 'ticker': ''}]
-                })
-            }
+            dm_components[dm_components.length - 1] = {
+                // 'id': dm_components.length,
+                'name': dm_components[dm_components.length -1].name,
+                'weight': 0,
+                'dual_momentum': true,
+                'lookback': 12,
+                'max_holdings': 1,
+                'holdings': [
+                    {'id': 0, 'ticker': ''}
+                ]
+            };
+            // add new empty component at the end
+            dm_components.push({'name': ''})
 
         // remove component
         } else {
@@ -472,7 +548,6 @@ class MainView extends React.Component {
         }
 
         this.setState({dm_components: dm_components});
-
     }
 
     modify_number_of_holdings(i, component_id) {
@@ -507,56 +582,47 @@ class MainView extends React.Component {
 
 
     render() {
-        if (this.state.data) {
 
-            // get total weight allocated (should be 100)
-            let total_allocated_weight = 0;
-            for (const[_i, component] of this.state.dm_components.entries()){
+        // get total weight allocated (should be 100)
+        let total_allocated_weight = 0;
+        for (const [_i, component] of this.state.dm_components.entries()) {
+            if (!isNaN(component.weight)) {
                 total_allocated_weight += component.weight;
             }
+        }
 
-            let dm_components = [];
-            for (const [component_id, _d] of this.state.dm_components.entries()) {
-                dm_components.push(
-                    <ComponentSelector
-                        key={component_id}
-                        config={this.state.dm_components[component_id]}
-                        total_allocated_weight={total_allocated_weight}
-                        handle_holding_update={(holding_id, event) =>{
-                            this.handle_holding_update(component_id, holding_id, event)
-                        }}
-                        handle_component_update={(event) => {
-                            this.handle_component_update(component_id, event)
-                        }}
-                        modify_number_of_holdings={(i) => {
-                            this.modify_number_of_holdings(i, component_id)
-                        }}
-                    />
-                )
-            }
-
-            return (
-                <div className="container">
-                    <MainInterface
-                        config={this.state.dm_config}
-                        handle_config_update={(e) => this.handle_config_update(e)}
-                        handle_tax_rate_update={(tax_type, rate) => this.handle_tax_rate_update(tax_type, rate)}
-                    />
-                    <div className="row">
-                        {dm_components}
-                        <div className="col-sm-3">
-                            <button type="button" className="btn btn-outline-success"
-                                onClick={() => this.modify_number_of_components(1)}
-                            >Add Category</button>
-                        </div>
-                    </div>
-                </div>
-            );
-        } else {
-            return (
-                <div>Loading!</div>
+        let dm_components = [];
+        for (const [component_id, _d] of this.state.dm_components.entries()) {
+            dm_components.push(
+                <ComponentSelector
+                    key={component_id}
+                    config={this.state.dm_components[component_id]}
+                    total_allocated_weight={total_allocated_weight}
+                    handle_holding_update={(holding_id, event) => {
+                        this.handle_holding_update(component_id, holding_id, event)
+                    }}
+                    handle_component_update={(event) => {
+                        this.handle_component_update(component_id, event)
+                    }}
+                    modify_number_of_holdings={(i) => {
+                        this.modify_number_of_holdings(i, component_id)
+                    }}
+                />
             )
         }
+
+        return (
+            <div className="container">
+                <MainInterface
+                    config={this.state.dm_config}
+                    handle_config_update={(e) => this.handle_config_update(e)}
+                    handle_tax_rate_update={(tax_type, rate) => this.handle_tax_rate_update(tax_type, rate)}
+                />
+                <div className="row">
+                    {dm_components}
+                </div>
+            </div>
+        );
     }
 }
 

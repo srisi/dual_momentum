@@ -18,30 +18,11 @@ code {
   margin-bottom: 1px;
 }
 
-.input_ticker{
-    flex: 1 1 9rem !important;
-}
 
-.input_duration{
-    flex: 1 1 9rem !important;
-}
-
-.dual_mom_buttons{
-    width: 100%;
-}
-
-.dual_mom_buttons label{
-    padding-right: 4px;
-    padding-left: 4px;
-}
+/*General*/
 
 label {
     cursor: pointer;
-/*//    font-size: 0.9rem !important;*/
-}
-
-.button_remove{
-    float: right;
 }
 
 .rem-6{
@@ -56,6 +37,50 @@ label {
     width: 14rem;
 }
 
+
+/*Components */
+
+.component_title{
+    font-size: 2rem;
+    font-weight: 500;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+
+    color: black;
+    line-height: 1.2;
+
+    border: none;
+    padding-left: 0;
+}
+
+.component_title_new{
+    background-color: white !important;
+}
+
+.dual_mom_buttons{
+    width: 100%;
+}
+
+.dual_mom_buttons label{
+    padding-right: 4px;
+    padding-left: 4px;
+}
+
+.button_remove{
+    float: right;
+}
+
+.input_ticker{
+    flex: 1 1 9rem !important;
+}
+
+.input_duration{
+    flex: 1 1 9rem !important;
+}
+
+
+/*General Interface */
+
 .tax_rate_selector{
     display: inline-flex;
     width: 100%;
@@ -64,3 +89,13 @@ label {
 .tax_type_name {
     width: 9.5rem;
 }
+
+.default_col{
+
+}
+
+
+
+
+
+

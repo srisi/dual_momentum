@@ -7,3 +7,6 @@ pytz==2019.1
 sqlparse==0.3.0
 
 IPython
+numpy
+pandas
+pandas_datareader
