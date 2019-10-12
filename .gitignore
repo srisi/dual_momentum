@@ -165,3 +165,5 @@ package-lock.json
 *.swp
 
 backend/data/stock_data/
+backend/data/clean_ticker_data/
+.idea/

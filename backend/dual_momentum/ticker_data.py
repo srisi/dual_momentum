@@ -1,17 +1,16 @@
+from datetime import date
+from pathlib import Path
+import os
+import time
+import pickle
+
+import numpy as np
+import pandas as pd
+import pandas_datareader as pdr
+import pandas_datareader.data as web
+from IPython import embed
 from dm_config import DATA_PATH
 from ticker_config import TICKER_CONFIG
-
-import pandas as pd
-pd.core.common.is_list_like = pd.api.types.is_list_like
-import numpy as np
-from datetime import datetime, date
-
-import pandas_datareader.data as web
-import pandas_datareader as pdr
-
-from IPython import embed
-
-from pathlib import Path
 
 
 class TickerData:
@@ -19,21 +18,38 @@ class TickerData:
     def __init__(self, ticker, use_early_replacements=True, force_new_data=False,
                  day_of_month_for_monthly_data=-1):
 
-        self.ticker = ticker
-        self.name = TICKER_CONFIG[ticker]['name']
-        self.start_year = TICKER_CONFIG[ticker]['start_year']
-        self.early_replacement = TICKER_CONFIG[ticker]['early_replacement']
+        pickle_path = Path(DATA_PATH, 'clean_ticker_data', f'{ticker}.pickle')
 
+        # if pickle data stored in the last hour, load it.
+        if (not force_new_data and pickle_path.exists() and
+            time.time() - os.path.getmtime(pickle_path) < 3600
+        ):
+            with open(pickle_path, 'rb') as infile:
+                loaded_ticker_data = pickle.load(infile)
+            self.__dict__.update(loaded_ticker_data.__dict__)
+            print("loaded from disk")
 
-        self.use_early_replacements = use_early_replacements
-        self.force_new_data = force_new_data
-        self.data_daily = self.load_ticker_data()
-        self.data_monthly = self.data_daily.groupby(by=[self.data_daily.index.year,
-                                                        self.data_daily.index.month]).nth(
-                                                            day_of_month_for_monthly_data)
-        if ticker == 'VNQ':
-            self.merge_monthly_data_with_index('eq_reit.csv')
-            embed()
+        # otherwise, create it anew.
+        else:
+            self.ticker = ticker
+            self.name = TICKER_CONFIG[ticker]['name']
+            self.start_year = TICKER_CONFIG[ticker]['start_year']
+            self.early_replacement = TICKER_CONFIG[ticker]['early_replacement']
+            self.monthly_index_replacement = TICKER_CONFIG[ticker][
+                'early_monthly_index_replacement']
+
+            self.use_early_replacements = use_early_replacements
+            self.force_new_data = force_new_data
+            self.data_daily = self.load_ticker_data()
+            self.data_monthly = self.data_daily.groupby(by=[self.data_daily.index.year,
+                                                            self.data_daily.index.month]).nth(
+                                                                day_of_month_for_monthly_data)
+            if self.monthly_index_replacement:
+                self.data_monthly = self.merge_monthly_data_with_index(
+                    self.monthly_index_replacement)
+
+            with open(pickle_path, 'wb') as outfile:
+                pickle.dump(self, outfile, protocol=pickle.HIGHEST_PROTOCOL)
 
     def __eq__(self, other):
         return (
@@ -42,6 +58,7 @@ class TickerData:
             np.all(self.data_daily == other.data_daily) and
             np.all(self.data_monthly == other.data_monthly)
         )
+
     def __repr__(self):
         return str(self.data_daily)
 
@@ -70,7 +87,7 @@ class TickerData:
         print(self.ticker, len(data_daily))
         return data_daily
 
-    def merge_daily_data_with_early_replacements(self, data_daily):
+    def merge_daily_data_with_early_replacements(self, data_daily: pd.DataFrame) -> pd.DataFrame:
         """
         Merges a ticker with its earlier replacements going back to 1980 where possible
         If no early replacement, does nothing
@@ -92,7 +109,7 @@ class TickerData:
         data_daily = data_daily['1980-01-01':]
         return data_daily
 
-    def merge_monthly_data_with_index(self, index_csv_name):
+    def merge_monthly_data_with_index(self, index_csv_name: str) -> pd.DataFrame:
         """
 
         :param index_csv_name:
@@ -108,22 +125,21 @@ class TickerData:
                                             index_data.index.month]).nth(-1)
 
         first_date = self.data_monthly.index[0]
-        merged_data = TickerData('ONES').data_monthly
+        merged_monthly_data = TickerData('ONES').data_monthly
 
         for c in ['Close', 'Adj Close']:
+            if self.ticker in ['QVAL', 'IVAL', 'QMOM', 'IMOM']:
+                index_data[c] = index_data[f'{self.ticker}_index']
 
             # adjust index data to fit with ticker monthly data
             index_data[c] *= (self.data_monthly[c][first_date] / index_data[c][first_date])
 
             # set merged data until first date to index data
-            merged_data[c][:first_date] = index_data[c][:first_date]
+            merged_monthly_data[c][:first_date] = index_data[c][:first_date]
             # for the rest, use ticker data
-            merged_data[c][first_date:] = self.data_monthly[c][first_date:]
+            merged_monthly_data[c][first_date:] = self.data_monthly[c][first_date:]
 
-        embed()
-
-        return merged_data
-
+        return merged_monthly_data
 
 
     @staticmethod
@@ -160,8 +176,7 @@ class TickerData:
 
 
 if __name__ == "__main__":
-    t = TickerData('VNQI', force_new_data=False, use_early_replacements=True)
-    embed()
+    t = TickerData('VMOT', force_new_data=False, use_early_replacements=True)
 
 #
 # class TestPeopleDB(unittest.TestCase):
@@ -179,6 +194,45 @@ if __name__ == "__main__":
 #         loaded_db = PeopleDatabase()
 #         loaded_db.load_from_disk(Path('test.pickle'))
 #         self.assertEqual(self.people_db, loaded_db)
+
+#
+#     elif ticker in ['QVAL', 'IVAL', 'QMOM', 'IMOM']:
+#
+#         print(ticker)
+#
+# #        pickle_path = Path(GAA_BASE_PATH, 'stock_data', 'alpha_architect.csv')
+#         s = pd.read_csv(Path(BASEPATH, 'global_asset_allocation', 'stock_data', 'alpha_architect.csv'))
+#         s['Datetime'] = pd.to_datetime(s['Date'])
+#         s = s.set_index('Datetime')
+#         s = s.groupby(by=[s.index.year, s.index.month]).nth(-1)
+#
+#         tick = load_from_disk(ticker)
+#         tick = tick.groupby(by=[tick.index.year, tick.index.month]).nth(DAY_OF_MONTH)
+#
+#         stock = merge_ticker(ticker, 'SPY')
+#         stock = stock.groupby(by=[stock.index.year, stock.index.month]).nth(DAY_OF_MONTH)
+#
+#         tick_first_date = tick.index[0]
+#         spy_first_date = stock.index[0]
+#
+#         if START_DATE == '1/1/1980' or START_DATE == '1/1/1996':
+#             if len(stock) < 276 or (len(stock) < 276 and stock.index[275] != (2018, 12)):
+#                 raise IndexError(f'stock is missing some months, probably related to the current '
+#                                  f'setting for DAY_OF_MONTH, which is {DAY_OF_MONTH}.')
+#
+#         try:
+#             s['adj_close'] = s['{}_index'.format(ticker)] * (tick['Adj Close'][tick_first_date] / s['{}_index'.format(ticker)][tick_first_date])
+#             s['close'] = s['{}_index'.format(ticker)] * (tick['Close'][tick_first_date] / s['{}_index'.format(ticker)][tick_first_date])
+#
+#             stock['Close'][spy_first_date:tick_first_date] = s['close'][spy_first_date:tick_first_date]
+#             stock['Adj Close'][spy_first_date:tick_first_date] = s['adj_close'][spy_first_date:tick_first_date]
+#
+#             if ticker == 'VMOT':
+#                 embed()
+#
+#             return stock
+#         except:
+#             embed()
 
 
 

@@ -30,7 +30,7 @@ class TestTickerMerge(unittest.TestCase):
         for ticker, early_replacement in [
             ('SPY', 'VFINX'),
             ('VTI', 'SPY'),
-            ('IEFA', 'EFA')
+            ('IEFA', 'EFA'),
         ]:
             self.new_merged = TickerData(ticker, use_early_replacements=True).data_daily
             self.old = TickerData(early_replacement, use_early_replacements=True).data_daily
