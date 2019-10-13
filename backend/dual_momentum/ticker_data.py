@@ -18,12 +18,13 @@ class TickerData:
     def __init__(self, ticker, use_early_replacements=True, force_new_data=False,
                  day_of_month_for_monthly_data=-1):
 
+        # delete all ticker data older than 1 hour
+        self.delete_old_data()
+
         pickle_path = Path(DATA_PATH, 'clean_ticker_data', f'{ticker}.pickle')
 
         # if pickle data stored in the last hour, load it.
-        if (not force_new_data and pickle_path.exists() and
-            time.time() - os.path.getmtime(pickle_path) < 3600
-        ):
+        if not force_new_data and pickle_path.exists():
             with open(pickle_path, 'rb') as infile:
                 loaded_ticker_data = pickle.load(infile)
             self.__dict__.update(loaded_ticker_data.__dict__)
@@ -43,7 +44,7 @@ class TickerData:
             self.data_daily = self.load_ticker_data()
             self.data_monthly = self.data_daily.groupby(by=[self.data_daily.index.year,
                                                             self.data_daily.index.month]).nth(
-                                                                day_of_month_for_monthly_data)
+                day_of_month_for_monthly_data)
             if self.monthly_index_replacement:
                 self.data_monthly = self.merge_monthly_data_with_index(
                     self.monthly_index_replacement)
@@ -62,6 +63,21 @@ class TickerData:
     def __repr__(self):
         return str(self.data_daily)
 
+    @staticmethod
+    def delete_old_data():
+        """
+        Deletes all ticker data older than 1 hour
+
+        :return:
+        """
+        for p in ['clean_ticker_data', 'stock_data']:
+            directory = Path(DATA_PATH, p)
+            for file in os.listdir(directory):
+                file_path = Path(directory, file)
+                if time.time() - os.path.getmtime(file_path) > 3600:
+                    print(file_path)
+                    os.remove(file_path)
+
     def load_ticker_data(self):
         """
         Load the daily data for one ticker including early replacements where necessary.
@@ -71,7 +87,7 @@ class TickerData:
 
         # if just all ones -> load ticker going to 1980 and set it to all ones.
         if self.ticker == 'ONES':
-            data_daily = TickerData('VFINX', force_new_data=self.force_new_data).data_daily
+            data_daily = TickerData('SPY', force_new_data=self.force_new_data).data_daily
             data_daily['Adj Close'] = 1.00
             data_daily['Close'] = 1.00
             return data_daily
@@ -95,8 +111,8 @@ class TickerData:
         """
         # load the data for the early replacement
         early_stock_data = TickerData(self.early_replacement,
-                                          force_new_data=self.force_new_data,
-                                          use_early_replacements=True).data_daily
+                                      force_new_data=self.force_new_data,
+                                      use_early_replacements=True).data_daily
 
         # adjust stock closing price of replacement for a seamless transition to the new ticker.
         first_date = data_daily.index[0]
@@ -141,7 +157,6 @@ class TickerData:
 
         return merged_monthly_data
 
-
     @staticmethod
     def load_data_from_disk(ticker, force_new_data):
         """
@@ -163,7 +178,7 @@ class TickerData:
                 try:
                     start_date = '1/1/1980'
                     stock_data = web.DataReader(ticker, data_source='yahoo', start=start_date,
-                                           end=date.today())
+                                                end=date.today())
                     stock_data.drop(['Open', 'High', 'Low', 'Volume'], inplace=True, axis=1)
                     stock_data.to_pickle(pickle_path)
                     break
@@ -174,66 +189,5 @@ class TickerData:
         return stock_data
 
 
-
 if __name__ == "__main__":
     t = TickerData('VMOT', force_new_data=False, use_early_replacements=True)
-
-#
-# class TestPeopleDB(unittest.TestCase):
-#
-#     def setUp(self):
-#         self.people_db = PeopleDatabase()
-#         for name in ['Dunn, WL', 'Garcia, Raquel', 'Risi, Stephan']:
-#             self.people_db.add_person_raw(name, 10)
-#
-#     def test_pickle(self):
-#         """
-#         Test if pickling works
-#         """
-#         self.people_db.store_to_disk(Path('test.pickle'))
-#         loaded_db = PeopleDatabase()
-#         loaded_db.load_from_disk(Path('test.pickle'))
-#         self.assertEqual(self.people_db, loaded_db)
-
-#
-#     elif ticker in ['QVAL', 'IVAL', 'QMOM', 'IMOM']:
-#
-#         print(ticker)
-#
-# #        pickle_path = Path(GAA_BASE_PATH, 'stock_data', 'alpha_architect.csv')
-#         s = pd.read_csv(Path(BASEPATH, 'global_asset_allocation', 'stock_data', 'alpha_architect.csv'))
-#         s['Datetime'] = pd.to_datetime(s['Date'])
-#         s = s.set_index('Datetime')
-#         s = s.groupby(by=[s.index.year, s.index.month]).nth(-1)
-#
-#         tick = load_from_disk(ticker)
-#         tick = tick.groupby(by=[tick.index.year, tick.index.month]).nth(DAY_OF_MONTH)
-#
-#         stock = merge_ticker(ticker, 'SPY')
-#         stock = stock.groupby(by=[stock.index.year, stock.index.month]).nth(DAY_OF_MONTH)
-#
-#         tick_first_date = tick.index[0]
-#         spy_first_date = stock.index[0]
-#
-#         if START_DATE == '1/1/1980' or START_DATE == '1/1/1996':
-#             if len(stock) < 276 or (len(stock) < 276 and stock.index[275] != (2018, 12)):
-#                 raise IndexError(f'stock is missing some months, probably related to the current '
-#                                  f'setting for DAY_OF_MONTH, which is {DAY_OF_MONTH}.')
-#
-#         try:
-#             s['adj_close'] = s['{}_index'.format(ticker)] * (tick['Adj Close'][tick_first_date] / s['{}_index'.format(ticker)][tick_first_date])
-#             s['close'] = s['{}_index'.format(ticker)] * (tick['Close'][tick_first_date] / s['{}_index'.format(ticker)][tick_first_date])
-#
-#             stock['Close'][spy_first_date:tick_first_date] = s['close'][spy_first_date:tick_first_date]
-#             stock['Adj Close'][spy_first_date:tick_first_date] = s['adj_close'][spy_first_date:tick_first_date]
-#
-#             if ticker == 'VMOT':
-#                 embed()
-#
-#             return stock
-#         except:
-#             embed()
-
-
-
-
