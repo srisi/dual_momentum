@@ -38,9 +38,11 @@ class TickerData:
             self.early_replacement = TICKER_CONFIG[ticker]['early_replacement']
             self.monthly_index_replacement = TICKER_CONFIG[ticker][
                 'early_monthly_index_replacement']
+            self.tax_category = TICKER_CONFIG[ticker]['tax_category']
 
             self.use_early_replacements = use_early_replacements
             self.force_new_data = force_new_data
+
             self.data_daily = self.load_ticker_data()
             self.data_monthly = self.data_daily.groupby(by=[self.data_daily.index.year,
                                                             self.data_daily.index.month]).nth(

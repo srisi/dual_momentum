@@ -1,10 +1,66 @@
 from IPython import embed
 from ticker_data import TickerData
+from ticker_config import TICKER_CONFIG
 from dm_config import DATA_PATH
 import pandas as pd
 from pathlib import Path
 import pickle
 
+
+def get_tax_rates_by_category(st_gains: float, lt_gains: float, federal_tax_rate: float,
+                  state_tax_rate: float):
+    """
+    Loads tax rates by investment category
+    :return: dict
+    """
+    collectibles_lt = 0.28
+    if collectibles_lt > st_gains:
+        collectibles_lt = st_gains
+
+    return {
+        'equities': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains,   'INCOME': lt_gains},
+        'reits': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains,   'INCOME': st_gains},
+        'bonds_treasury': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': federal_tax_rate},
+        'bonds_muni': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': state_tax_rate},
+        'bonds_other': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': st_gains},
+
+        # GLD, SLV etc.
+        'collectibles': {'ST_GAINS': st_gains, 'LT_GAINS': collectibles_lt, 'INCOME': st_gains}
+    }
+
+def get_tax_rates_by_ticker(tax_rates: dict, ticker_list: list):
+    """
+    returns a dict of tax rates by tickers
+
+    :param tax_rates:
+    :param ticker_list:
+    :return: dict
+    """
+    tax_rates_by_ticker = {}
+
+    for t in ticker_list:
+
+        val_error = f'Tax category for {t} available from ticker_config.py. Please pass this ' \
+                    f'ticker as a dict with keys ticker and tax_category.'
+
+        # e.g. VTI
+        if isinstance(t, str):
+            ticker = t
+            if ticker in TICKER_CONFIG:
+                tax_category = TICKER_CONFIG[ticker]['tax_category']
+            else:
+                raise ValueError(val_error)
+        elif isinstance(t, dict):
+            ticker = t['ticker']
+            tax_category = t['tax_category']
+            if tax_category not in tax_rates:
+                raise ValueError(f'Tax category has to be in {tax_rates.keys()}.')
+        else:
+            raise ValueError(val_error)
+
+        tax_rates_by_ticker[ticker] = tax_rates[tax_category]
+
+    return tax_rates_by_ticker
 
 def load_tbill_rates() -> pd.DataFrame:
     """
