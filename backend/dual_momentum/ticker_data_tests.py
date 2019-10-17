@@ -5,42 +5,46 @@ from ticker_data import TickerData
 from ticker_config import TICKER_CONFIG
 from IPython import embed
 
-#
-# class TestTickerMerge(unittest.TestCase):
-#
-#     def setUp(self) -> None:
-#
-#         for ticker, early_replacement in [
-#             ('SPY', 'VFINX'),
-#             ('VTI', 'SPY'),
-#             ('IEFA', 'EFA'),
-#         ]:
-#             self.new_merged = TickerData(ticker, use_early_replacements=True).data_daily
-#             self.old = TickerData(early_replacement, use_early_replacements=True).data_daily
-#             self.new_no_rep = TickerData(ticker, use_early_replacements=False).data_daily
-#
-#     def test_merge(self):
-#         """
-#
-#         """
-#
-#         first_index = self.new_no_rep.index[0]
-#         for c in ['Close', 'Adj Close']:
-#
-#             # from first shared index on, close and adj close data should be the same
-#             self.assertTrue(np.allclose(self.new_no_rep[c], self.new_merged[first_index:][c]))
-#
-#             # check that shift from old to new ticker does not have any unusual returns
-#             # i.e. when switching from old to new ticker, the return is less than 3%
-#             ret = (self.new_merged[:first_index][c] / self.new_merged[:first_index][c].shift(
-#                 1)).tail(1)[0]
-#             self.assertLess(abs(ret - 1), 0.03)
-#
-#             # check that returns for old and merged ticker are the same at the earliest dates
-#             # skip first because NaN
-#             ret_old = (self.old[c] / self.old[c].shift(1)).head()[1:]
-#             ret_merged = (self.new_merged[c] / self.new_merged[c].shift(1)).head()[1:]
-#             self.assertTrue(np.allclose(ret_old, ret_merged))
+
+class TestTickerMerge(unittest.TestCase):
+
+    def setUp(self) -> None:
+
+        for ticker, early_replacement in [
+            ('SPY', 'VFINX'),
+            ('VTI', 'SPY'),
+            ('IEFA', 'EFA'),
+        ]:
+            self.new_merged = TickerData(ticker, use_early_replacements=True).data_daily
+            self.old = TickerData(early_replacement, use_early_replacements=True).data_daily
+            self.new_no_rep = TickerData(ticker, use_early_replacements=False).data_daily
+
+            embed()
+
+            self.test_merge()
+
+    def test_merge(self):
+        """
+
+        """
+
+        first_index = self.new_no_rep.index[0]
+        for c in ['Close', 'Adj Close']:
+
+            # from first shared index on, close and adj close data should be the same
+            self.assertTrue(np.allclose(self.new_no_rep[c], self.new_merged[first_index:][c]))
+
+            # check that shift from old to new ticker does not have any unusual returns
+            # i.e. when switching from old to new ticker, the return is less than 3%
+            ret = (self.new_merged[:first_index][c] / self.new_merged[:first_index][c].shift(
+                1)).tail(1)[0]
+            self.assertLess(abs(ret - 1), 0.03)
+
+            # check that returns for old and merged ticker are the same at the earliest dates
+            # skip first because NaN
+            ret_old = (self.old[c] / self.old[c].shift(1)).head()[1:]
+            ret_merged = (self.new_merged[c] / self.new_merged[c].shift(1)).head()[1:]
+            self.assertTrue(np.allclose(ret_old, ret_merged))
 
 class TestTickerConfig(unittest.TestCase):
 

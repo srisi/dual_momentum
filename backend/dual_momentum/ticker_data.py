@@ -18,6 +18,9 @@ class TickerData:
     def __init__(self, ticker, use_early_replacements=True, force_new_data=False,
                  day_of_month_for_monthly_data=-1):
 
+        #TODO: load from disk needs to distinguish between using and not using early
+        #TODO: replacement.
+
         # delete all ticker data older than 1 hour
         self.delete_old_data()
 
