@@ -18,13 +18,11 @@ class TickerData:
     def __init__(self, ticker, use_early_replacements=True, force_new_data=False,
                  day_of_month_for_monthly_data=-1):
 
-        #TODO: load from disk needs to distinguish between using and not using early
-        #TODO: replacement.
-
         # delete all ticker data older than 1 hour
         self.delete_old_data()
 
-        pickle_path = Path(DATA_PATH, 'clean_ticker_data', f'{ticker}.pickle')
+        pickle_path = Path(DATA_PATH, 'clean_ticker_data',
+                           f'{ticker}_replacement_{use_early_replacements}.pickle')
 
         # if pickle data stored in the last hour, load it.
         if not force_new_data and pickle_path.exists():
@@ -69,9 +67,11 @@ class TickerData:
         return str(self.data_daily)
 
     @staticmethod
-    def delete_old_data():
+    def delete_old_data(force_delete_all_data=False):
         """
         Deletes all ticker data older than 1 hour
+
+        :param force_delete_all_data: if active, deletes all existing ticker data
 
         :return:
         """
@@ -79,7 +79,7 @@ class TickerData:
             directory = Path(DATA_PATH, p)
             for file in os.listdir(directory):
                 file_path = Path(directory, file)
-                if time.time() - os.path.getmtime(file_path) > 3600:
+                if (force_delete_all_data or (time.time() - os.path.getmtime(file_path) > 3600)):
                     print(file_path)
                     os.remove(file_path)
 

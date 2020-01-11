@@ -15,29 +15,43 @@ class TestTickerMerge(unittest.TestCase):
             ('VTI', 'SPY'),
             ('IEFA', 'EFA'),
         ]:
+            self.new_no_replacement = TickerData(ticker, use_early_replacements=False).data_daily
+            # self.old_no_replacement = TickerData(early_replacement,
+            #                                      use_early_replacements=False).data_daily
             self.new_merged = TickerData(ticker, use_early_replacements=True).data_daily
             self.old = TickerData(early_replacement, use_early_replacements=True).data_daily
-            self.new_no_rep = TickerData(ticker, use_early_replacements=False).data_daily
 
-            embed()
-
+            self.test_using_replacements_works()
             self.test_merge()
+
+    def test_using_replacements_works(self):
+        """
+        Check if using and not using replacements produces different dataframes
+
+        :return:
+        """
+        self.assertNotEqual(len(self.new_no_replacement), len(self.new_merged))
+
 
     def test_merge(self):
         """
-
+        Test if ticker merging works
         """
 
-        first_index = self.new_no_rep.index[0]
+        first_index = self.new_no_replacement.index[0]
+        print(first_index)
         for c in ['Close', 'Adj Close']:
 
             # from first shared index on, close and adj close data should be the same
-            self.assertTrue(np.allclose(self.new_no_rep[c], self.new_merged[first_index:][c]))
+            self.assertTrue(np.allclose(self.new_no_replacement[c],
+                                        self.new_merged[first_index:][c]))
 
             # check that shift from old to new ticker does not have any unusual returns
             # i.e. when switching from old to new ticker, the return is less than 3%
-            ret = (self.new_merged[:first_index][c] / self.new_merged[:first_index][c].shift(
-                1)).tail(1)[0]
+            ret = (
+                self.new_merged[:first_index][c] / self.new_merged[:first_index][c].shift(1)
+                ).tail(1)[0]
+
             self.assertLess(abs(ret - 1), 0.03)
 
             # check that returns for old and merged ticker are the same at the earliest dates
@@ -84,4 +98,5 @@ class TestTickerConfig(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # used to test using ipython, which allows using embed in unittests
+    unittest.main(argv=['first-arg-is-ignored'], exit=False)

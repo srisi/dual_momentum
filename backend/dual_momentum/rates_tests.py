@@ -27,6 +27,10 @@ class TestTaxRatesByTicker(unittest.TestCase):
             get_tax_rates_by_ticker(self.tax_config, ticker_list_not_in_config)
 
     def testDict(self):
+        """
+        Test case when dict is passed
+        :return:
+        """
 
         ticker_list_valid = [{'ticker': 'VTI', 'tax_category': 'equities'},
                              {'ticker': 'QQQ', 'tax_category': 'equities'}]

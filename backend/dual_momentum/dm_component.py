@@ -1,7 +1,10 @@
 from rates import load_tbill_rates, get_tax_rates_by_category, get_tax_rates_by_ticker
+from fred_data import load_fred_data
 from ticker_data import TickerData
 import re
 import numpy as np
+
+from IPython import embed
 
 
 class DualMomentumComponent:
@@ -68,9 +71,8 @@ class DualMomentumComponent:
         self.force_new_data = force_new_data
         self.use_early_replacements = use_early_replacements
         self.day_of_month_for_monthly_data = day_of_month_for_monthly_data
+        self.df = None
 
-        # load tbil rates into initial df as they will be needed in every case.
-        self.df = load_tbill_rates()
 
     def run_dual_momentum(self):
         """
@@ -79,7 +81,14 @@ class DualMomentumComponent:
         :return:
         """
 
-        self.df['holding'] = ''         # holdings
+        # initialize df with tbil rates
+        tbil_df = load_fred_data('tbil_rate', return_type='df')
+        self.df = TickerData('ONES').data_monthly
+        self.df.drop(['Close', 'Adj Close'], inplace=True, axis=1)
+        self.df['tbil_rate'] = tbil_df['index']
+        self.df['tbil_rate'] += 100
+        self.df['tbil_performance_1'] = (self.df['tbil_rate'] / 100) ** (1 / 12)
+        self.df['holding'] = ''
         self.df['cap_gains'] = 0.0
         self.df['div_gains'] = 0.0
 
@@ -111,8 +120,7 @@ class DualMomentumComponent:
         else: tow tickers
         """
 
-        for idx, r in enumerate(self.df.iterrows()):
-            date, row = r
+        for idx, (date, row) in enumerate(self.df.iterrows()):
 
             count_active_tickers = 0
             momentums = {}
@@ -299,12 +307,11 @@ class DualMomentumComponent:
         return months_held_before
 
 if __name__ == '__main__':
-    ticker_list = [{'ticker': 'VTI', 'tax_category': 'equities'}]
+    ticker_list = ['VTI']
     tax_config = {'st_gains': 0.35, 'lt_gains': 0.15, 'federal_tax_rate': 0.22,
                    'state_tax_rate': 0.12}
     dmc = DualMomentumComponent(name='equities', ticker_list=ticker_list, lookback_months=12,
                                 max_holdings=1, start_date='1980-01-01', use_dual_momentum=True,
                                 money_market_holding='VGIT', tax_config=tax_config)
     dmc.run_dual_momentum()
-    from IPython import embed
     embed()
