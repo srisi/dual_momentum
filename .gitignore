@@ -167,3 +167,11 @@ package-lock.json
 backend/data/stock_data/
 backend/data/clean_ticker_data/
 .idea/
+
+backend/data/index_data/
+
+data/clean_ticker_data/
+
+data/index_data/
+
+data/stock_data/

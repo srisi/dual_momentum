@@ -29,6 +29,8 @@ urlpatterns = [
     # API endpoints
     url('api/people/', main_views.list_people),
 
+    url('get_test_data', main_views.get_test_data),
+
     # React views
     url('', render_react_view, {'component_name': 'MainView'}),
 ]

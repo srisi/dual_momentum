@@ -468,6 +468,10 @@ class MainView extends React.Component {
         this.csrftoken = getCookie('csrftoken');
     }
 
+    componentDidMount() {
+        this.load_result_data();
+    }
+
     handle_config_update(event){
         let config = this.state.dm_config;
         const ename = event.target.name;
@@ -578,6 +582,25 @@ class MainView extends React.Component {
         }
         this.setState({dm_components: dm_components});
     }
+
+    async load_result_data() {
+        // const dataset = encodeURIComponent(dataset_name);
+        fetch(`get_test_data`)
+            .then((response) => {
+                response
+                    .json()
+                    .then((data) => {
+                        console.log("new data", data);
+                        this.setState({data:data});
+                        return true
+                    })
+            }).catch(() => {
+                console.log("error");
+                return false
+            });
+
+    }
+
 
 
 
