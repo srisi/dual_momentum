@@ -185,7 +185,19 @@ class DualMomentumComposite:
     def get_result_json(self):
 
         if self.simulation_finished:
-            return self.get_cumulative_performance('pretax').to_json()
+            self.get_cumulative_performance('pretax')
+
+            self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
+
+            values = []
+            for date, row in self.df.iterrows():
+
+                values.append({
+                    'date': date,
+                    'value_start': row['prev_total'],
+                    'value_end': row['performance_pretax_cumulative']
+                })
+            return values
 
 
 
@@ -226,8 +238,7 @@ if __name__ == '__main__':
                                leverage=leverage,
                                borrowing_cost_above_libor=borrowing_cost_above_libor)
     dm.run_multi_component_dual_momentum()
-    embed()
-
+    dm.get_result_json()
 
 
 

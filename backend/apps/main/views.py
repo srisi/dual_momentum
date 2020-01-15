@@ -43,7 +43,7 @@ def get_test_data(request):
                                leverage=leverage,
                                borrowing_cost_above_libor=borrowing_cost_above_libor)
     dm.run_multi_component_dual_momentum()
-    return HttpResponse(dm.get_result_json())
+    return JsonResponse({'data': dm.get_result_json()})
 
 
 

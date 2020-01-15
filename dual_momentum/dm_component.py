@@ -178,7 +178,6 @@ class DualMomentumComponent:
         holdings = np.array(self.df['holding'])
         for idx, r in enumerate(self.df.iterrows()):
             date, row = r
-            print(idx, date)
 
             # when in cash, no gains or losses (money market holding gets accounted for with
             # leverage

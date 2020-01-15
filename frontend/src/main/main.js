@@ -4,9 +4,105 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+import * as d3 from 'd3';
+
 import { getCookie } from '../common'
 import { create_graph, update_graph_color } from './graph.js'
 import './main.css';
+
+
+class Chart extends React.Component {
+    constructor(props){
+        super(props);
+
+        this.state = {
+            bars: null,
+            xAxis: null
+        }
+    }
+
+    xScale = d3.scaleTime().range([0, this.props.width]);
+    yScale = d3.scaleLinear().range([this.props.height, 0]);
+
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        this.xScale.domain(d3.extent(this.props.data, d => d.date));
+        this.yScale.domain([0, d3.max(this.props.data, d => d.value_end)]);
+
+        const bars = this.props.data.map(d => {
+            const y1 = this.yScale(d3.max([d.value_start, d.value_end]));
+            const y2 = this.yScale(d3.min([d.value_start, d.value_end]));
+            return {
+                x: this.xScale(d.date),
+                y: y1, height: (y2-y1),
+            }
+        });
+
+        console.log("setting State", typeof bars);
+        console.log("same", bars === prevState.bars);
+        if (JSON.stringify(bars) !== JSON.stringify(this.state.bars)) {
+
+            const xAxis = d3.axisBottom().scale(this.xScale)
+                .tickFormat(d3.timeFormat('%b'));
+
+            console.log("xb", xAxis);
+
+            this.setState({bars, xAxis});
+            console.log("updated state");
+        }
+    }
+
+
+
+
+
+    render(){
+        const AxisReactFirst = ({scale, translateX, translateY}) => {
+            const ticks = scale.ticks();
+            return(
+                <foreignObject width="100%" y={translateY} height="20" fontSize={10}>
+                    <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                        {ticks.map(tick => (
+                            <span key={tick}>
+                                {tick.toLocaleDateString('en-US')}
+                            </span>
+                        ))}
+                    </div>
+                </foreignObject>
+            )
+        };
+
+        console.log(this.state.bars);
+        if (!this.props.data || !this.state.bars) {
+            return (<div></div>);
+        } else {
+            return (
+                <svg width={this.props.width} height={this.props.height}>
+
+                    {
+                        this.state.bars.map((d, idx) => {
+                            return <rect key={idx} x={d.x} y={d.y} width='2' height={d.height} />
+                        })
+                    }
+
+                    <g>
+                        <AxisReactFirst
+                            scale={this.xScale}
+                            translateX={0}
+                            translateY={0}
+                        />
+                    </g>
+                </svg>
+            )
+        }
+    }
+}
+
+Chart.propTypes={
+    data: PropTypes.array.isRequired,
+    width: PropTypes.number.isRequired,
+    height: PropTypes.number.isRequired
+};
+
 
 class MainInterface extends React.Component {
     constructor(props){
@@ -589,7 +685,11 @@ class MainView extends React.Component {
             .then((response) => {
                 response
                     .json()
-                    .then((data) => {
+                    .then((d) => {
+                        let data = d.data;
+                        data.forEach(element => {
+                            element.date = new Date(element.date[0], element.date[1] - 1);
+                        });
                         console.log("new data", data);
                         this.setState({data:data});
                         return true
@@ -643,6 +743,13 @@ class MainView extends React.Component {
                 />
                 <div className="row">
                     {dm_components}
+                </div>
+                <div className={"row"}>
+                    <Chart
+                        data={this.state.data}
+                        width={800}
+                        height={400}
+                    />
                 </div>
             </div>
         );
