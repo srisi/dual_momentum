@@ -345,6 +345,63 @@ TICKER_CONFIG = {
         'suggest_in_search': False,
         'tax_category': 'bonds_treasury'
     },
+
+    'IEF': {
+        'name': '7-10 Year Treasury Bonds',                         # duration 7.4 years
+        'start_year': 2002,
+        'early_replacement': 'VFITX',
+        'early_monthly_index_replacement': None,
+        'suggest_in_search': True,
+        'tax_category': 'bonds_treasury'
+    },
+
+    'TLT': {
+        'name': '20+ Year Treasuries',                              # duration: 17 years
+        'name_full': 'iShares 20+ Year Treasury Bond ETF',
+        'start_year': 2002,
+        'early_replacement': 'VUSTX',
+        'early_monthly_index_replacement': None,
+        'suggest_in_search': True,
+        'tax_category': 'bonds_treasury'
+    },
+    'VUSTX': {
+        'name': 'Vanguard Long Term Treasury Fund',                 # duration 17 years
+        'start_year': 1986,
+        'early_replacement': 'VWESX',
+        'early_monthly_index_replacement': None,
+        'suggest_in_search': False,
+        'tax_category': 'bonds_treasury'
+    },
+
+    # duration 17 years. investment grade but similar reaction to interest rate changes
+    'VWESX': {
+        'name': 'Vanguard Long Term Investment Grade Fund',
+        'start_year': 1980,
+        'early_replacement': None,
+        'early_monthly_index_replacement': None,
+        'suggest_in_search': False,
+        'tax_category': 'bonds_other'
+    },
+
+    # duration: 1.9 years
+    'SHY': {
+        'name': '1-3 Year Treasury Bond',
+        'start_year': 2003,
+        'early_replacement': 'TWUSX',
+        'early_monthly_index_replacement': None,
+        'suggest_in_search': True,
+        'tax_category': 'bonds_treasury'
+    },
+    # duration 1.8 years
+    'TWUSX': {
+        'name': 'American Century Short Term Government Fund',
+        'start_year': 1982,
+        'early_replacement': 'FGOVX',
+        'early_monthly_index_replacement': None,
+        'suggest_in_search': False,
+        'tax_category': 'bonds_treasury'
+    },
+    #
     # '': {
     #     'name': '',
     #     'start_year': ,

@@ -1,0 +1,35 @@
+ elif ticker == 'BOND':
+        stock = merge_ticker('BOND', 'AGG')
+    elif ticker == 'BND':
+        stock = merge_ticker('BND', 'AGG')
+    elif ticker == 'AGG':
+        stock = merge_ticker('AGG', 'VBMFX')    # 1986  Good fit, Vanguard Total Bond
+    elif ticker == 'VBMFX':
+        stock = merge_ticker('VBMFX', 'USAIX')  # 1980
+
+    elif ticker == 'TLT':                       # 2002      Dur: 17 years
+        stock = merge_ticker('TLT', 'VUSTX')    # 1986      Dur: 17 years
+    elif ticker == 'VUSTX':
+        stock = merge_ticker('VUSTX', 'VWESX')  # 1980, long investment fund but good match because
+                                                #       same reaction to interest rates Dur: 17 years
+    elif ticker == 'VGLT':
+        stock = merge_ticker('VGLT', 'TLT')     # 2009
+
+    elif ticker == 'TLH':                        # 2007                        Dur: 11.6 years
+        stock = merge_ticker('TLH', 'ONES')
+
+    elif ticker == 'IEF':                       # 2002                        Dur: 7.4 years
+        stock = merge_ticker('IEF', 'VFITX')    # 1991 ok but not great fit,  Dur: 5.2 years
+    elif ticker == 'VFITX':
+        stock = merge_ticker('VFITX', 'FGOVX')  # 1980  ok but not great fit, Dur: 5.5 years
+
+    elif ticker == 'VGIT':                      # 2009                        Dur: 5.14 years
+        stock = merge_ticker('IEF', 'VFITX')    # 1991                        Dur: 5.2 years
+    elif ticker == 'VFITX':
+        stock = merge_ticker('VFITX', 'FGOVX')  # 1980                        Dur: 5.5 years
+
+    elif ticker == 'SHY':                       # 2003                        Dur: 1.9 years
+        stock = merge_ticker('SHY', 'TWUSX')    # 1982                        Dur: 1.8 years
+    elif ticker == 'TWUSX':
+        stock = merge_ticker('TWUSX', 'FGOVX')  # 1980  Not good but need to extend series to 1980.
+                                                #                             Dur: 5.5 years
