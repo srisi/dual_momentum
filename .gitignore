@@ -170,7 +170,7 @@ backend/data/clean_ticker_data/
 
 backend/data/index_data/
 
-data/clean_ticker_data/
+#data/clean_ticker_data/
 
 data/index_data/
 
