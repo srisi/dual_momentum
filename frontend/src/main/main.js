@@ -22,11 +22,11 @@ class Chart extends React.Component {
     }
 
     xScale = d3.scaleTime().range([0, this.props.width]);
-    yScale = d3.scaleLinear().range([this.props.height, 0]);
+    yScale = d3.scaleLog().base(10).range([this.props.height, 1]);
 
     componentDidUpdate(prevProps, prevState, snapshot) {
         this.xScale.domain(d3.extent(this.props.data, d => d.date));
-        this.yScale.domain([0, d3.max(this.props.data, d => d.value_end)]);
+        this.yScale.domain([0.1, d3.max(this.props.data, d => d.value_end)]);
 
         const bars = this.props.data.map(d => {
             const y1 = this.yScale(d3.max([d.value_start, d.value_end]));
@@ -34,6 +34,7 @@ class Chart extends React.Component {
             return {
                 x: this.xScale(d.date),
                 y: y1, height: (y2-y1),
+                gained_money: d.value_end > d.value_start
             }
         });
 
@@ -43,8 +44,6 @@ class Chart extends React.Component {
 
             const xAxis = d3.axisBottom().scale(this.xScale)
                 .tickFormat(d3.timeFormat('%b'));
-
-            console.log("xb", xAxis);
 
             this.setState({bars, xAxis});
             console.log("updated state");
@@ -80,7 +79,13 @@ class Chart extends React.Component {
 
                     {
                         this.state.bars.map((d, idx) => {
-                            return <rect key={idx} x={d.x} y={d.y} width='2' height={d.height} />
+                            console.log(d.value_end, d.value_start);
+                            return <rect
+                                key={idx}
+                                x={d.x} y={d.y}
+                                width='2' height={d.height}
+                                style={{'fill': d.gained_money ? 'green' : 'red' }}
+                            />
                         })
                     }
 
