@@ -4,16 +4,10 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import * as d3 from 'd3';
-
 import {ReturnsChart} from "./return_chart";
 
 import { getCookie } from '../common'
-import { create_graph, update_graph_color } from './graph.js'
 import './main.css';
-
-
-
 
 
 class MainInterface extends React.Component {
@@ -600,9 +594,10 @@ class MainView extends React.Component {
                     .then((d) => {
                         let data = d.data;
                         data.forEach(element => {
-                            element.date = new Date(element.date[0], element.date[1] - 1);
+                            element.date_str = element.date;
+                            element.date_start = new Date(element.date[0], element.date[1]);
+                            element.date_end = new Date(element.date[0], element.date[1] + 1);
                         });
-                        console.log("new data", data);
                         this.setState({data:data});
                         return true
                     })

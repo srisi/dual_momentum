@@ -1,0 +1,16 @@
+.grid line {
+    stroke: #ddd;
+}
+
+.grid .domain{
+    stroke: #ddd;
+}
+
+#chart_container:hover{
+    cursor: crosshair;
+}
+
+.chart_tooltip{
+    position: relative;
+    opacity: 0.8;
+}

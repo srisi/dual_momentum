@@ -184,19 +184,33 @@ class DualMomentumComposite:
 
     def get_result_json(self):
 
+        import json
+
+
         if self.simulation_finished:
             self.get_cumulative_performance('pretax')
 
             self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
 
             values = []
-            for date, row in self.df.iterrows():
+            for idx, (date, row) in enumerate(self.df.iterrows()):
+                # skip until all dual momentum components have enough lookback data
+                if idx < max([c.lookback_months for c in self.components if c.use_dual_momentum]):
+                    continue
+                # skip last row
+                if idx == len(self.df) - 1:
+                    continue
 
                 values.append({
                     'date': date,
                     'value_start': row['prev_total'],
                     'value_end': row['performance_pretax_cumulative']
                 })
+
+                with open('temp_data.json', 'w') as out:
+                    json.dump(values, out)
+
+
             return values
 
 

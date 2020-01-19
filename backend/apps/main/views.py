@@ -10,6 +10,13 @@ from django.http import JsonResponse, HttpResponse
 
 def get_test_data(request):
 
+    import json
+    with open('temp_data.json', 'r') as infile:
+        data =  json.load(infile)
+        return JsonResponse({'data': data})
+
+
+
     from dual_momentum.dm_composite import DualMomentumComposite
 
     tax_config = {'st_gains': 0.35, 'lt_gains': 0.15, 'federal_tax_rate': 0.22,
