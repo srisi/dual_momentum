@@ -70,13 +70,16 @@ label {
     float: right;
 }
 
-.input_ticker{
-    flex: 1 1 9rem !important;
+.ticker_list_heading{
+    width: 100%;
+    border-bottom-right-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
 }
 
-.input_duration{
-    flex: 1 1 9rem !important;
-}
+/*.input_ticker{*/
+/*    flex: 1 1 9rem !important;*/
+/*}*/
+
 
 
 /*General Interface */

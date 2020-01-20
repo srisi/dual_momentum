@@ -8,12 +8,21 @@ from .serializers import PersonSerializer
 from .models import load_json_data
 from django.http import JsonResponse, HttpResponse
 
+from dual_momentum.ticker_config import TICKER_CONFIG
+
 def get_test_data(request):
 
     import json
+
+    ticker_suggestions = {}
+    for ticker, config in TICKER_CONFIG.items():
+        if config['suggest_in_search']:
+            ticker_suggestions[config['name']] = ticker
+
+
     with open('temp_data.json', 'r') as infile:
         data =  json.load(infile)
-        return JsonResponse({'data': data})
+        return JsonResponse({'data': data, 'ticker_configs': ticker_suggestions})
 
 
 

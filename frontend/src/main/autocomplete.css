@@ -1,0 +1,76 @@
+/*Many of the options below overwrite defaults from Mui Autocomplete*/
+/*hence the excessive use of !important */
+/*I guess the alternative would be to overwrite them in the source*/
+/*but then, does that get overwritten with new versions?*/
+
+.ticker_span{
+    flex: 0 0 4rem !important;
+}
+
+.ticker_selector_root{
+    flex: 1 1 7rem !important;
+    padding: 0 !important;
+    border-bottom: 1px solid #ced4da;
+    border-right: 1px solid #ced4da;
+    border-left: 1px solid #ced4da;
+    /*border-radius: .2rem;*/
+}
+
+/*Rounded corners and bottom margin around last ticker*/
+.ticker_selector_root:last-child{
+    border-bottom-left-radius: .2rem;
+    border-bottom-right-radius: .2rem;
+    margin-bottom: .25rem;
+}
+
+.MuiFormControl-root{
+    width: 100%;
+}
+
+.ticker_selector_inputroot{
+    padding: 0 !important;
+    border-bottom: 0 !important;
+    background-color: white !important;
+}
+
+.ticker_selector_inputroot:before, .ticker_selector_inputroot:after{
+    border-bottom: 0 !important;
+}
+
+.ticker_selector_input{
+    /*width: 100% !important;*/
+    padding: .25rem .5rem !important;
+    font-size: .875rem !important;
+    font-weight: 400;
+    font-family: Arial, sans-serif !important;
+    color: #495057 !important;
+    line-height: 1.5;
+}
+
+.ticker_selector_popper{
+    width: 400px !important;
+}
+
+.MuiIconButton-root{
+    background-color: white !important;
+}
+
+.MuiIconButton-root:hover{
+    background-color: white !important;
+    color: black;
+}
+
+/*Move clear button all the way to the right*/
+.MuiAutocomplete-inputRoot[class*="MuiFilledInput-root"] .MuiAutocomplete-endAdornment{
+    right: 2px !important;
+}
+
+.MuiAutocomplete-clearIndicator{
+    /*visibility: visible !important;*/
+    margin-top: 2px !important;
+    padding: 2px !important;
+}
+
+.input_duration{
+    flex: 1 1 9rem !important;
+}

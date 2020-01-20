@@ -4,7 +4,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+
+import queryString from 'query-string';
+
 import {ReturnsChart} from "./return_chart";
+import {AutoCompleteField} from "./autocomplete";
+import {ticker_configs} from "./ticker_configs";
 
 import { getCookie } from '../common'
 import './main.css';
@@ -205,10 +210,13 @@ class ComponentSelector extends React.Component {
         super(props);
     }
 
+
     render() {
+
         // figure out if this is the final empty component
         const is_empty_component = (!('weight' in this.props.config));
 
+        // Empty component Shell
         if (is_empty_component) {
             return (
                 <div className="col-xl-3 col-lg-4 col-md-4 col-sm-6 col-xs-12 mt-4">
@@ -234,6 +242,8 @@ class ComponentSelector extends React.Component {
                     </div>
                 </div>
             )
+
+        // filled component
         } else {
             let holding_boxes = [];
             for (const [_i, holding] of this.props.config.holdings.entries()) {
@@ -241,8 +251,8 @@ class ComponentSelector extends React.Component {
                     <HoldingBox
                         key={holding.id}
                         holding={holding}
-                        handle_holding_update={(event) =>
-                            this.props.handle_holding_update(holding.id, event)
+                        handle_holding_update={(ticker) =>
+                            this.props.handle_holding_update(holding.id, ticker)
                         }
                     />
                 );
@@ -347,8 +357,23 @@ class ComponentSelector extends React.Component {
                             </div>
                         </div>
                     </div>
+                    <div className="ticker_list">
+                        <div>
+                            <div className="input-group input-group-sm">
+                                <div className="input-group-prepend ticker_list_heading">
+                                    <span className="input-group-text ticker_list_heading">
+                                        Ticker List:
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="holding_boxes">
+                                {holding_boxes}
+                            </div>
+                        </div>
+                    </div>
 
-                    <div>{holding_boxes}</div>
+
+                    {/*Add / Remove ticker buttons*/}
                     {(this.props.config.dual_momentum || this.props.config.holdings.length === 0) ?
                         <button type="button" className="btn btn-outline-primary"
                             onClick={() => this.props.modify_number_of_holdings(1)}
@@ -371,28 +396,36 @@ ComponentSelector.propTypes={
 };
 
 class HoldingBox extends React.Component {
+    // the box for one single holding
+
     constructor(props){
         super(props);
     }
 
     render(){
+        // let input =
+        //     <div className="input-group input-group-sm mb-1">
+        //         <div className="input-group-prepend">
+        //             <span className="input-group-text rem-6">Ticker {this.props.holding.id + 1}: </span>
+        //         </div>
+        //         <input className="form-control input_ticker"
+        //             type="text" name="ticker" maxLength="20" size="20"
+        //             value={this.props.holding.ticker}
+        //             onChange={(e) => this.props.handle_holding_update(e)}
+        //         />
+        //     </div>;
         return (
-            <div className="input-group input-group-sm mb-1">
-                <div className="input-group-prepend">
-                    <span className="input-group-text rem-6">Ticker {this.props.holding.id + 1}: </span>
-                </div>
-                <input className="form-control input_ticker"
-                    type="text" name="ticker" maxLength="20" size="20"
-                    value={this.props.holding.ticker}
-                    onChange={(e) => this.props.handle_holding_update(e)}
-                />
-            </div>
+            <AutoCompleteField
+                ticker={this.props.holding.ticker}
+                selection_options={ticker_configs}
+                handle_holding_update={(ticker) => this.props.handle_holding_update(ticker)}
+            />
         )
     }
 }
 HoldingBox.propTypes={
-    holding: PropTypes.object,
-    handle_holding_update: PropTypes.func
+    holding: PropTypes.object.isRequired,
+    handle_holding_update: PropTypes.func.isRequired
 };
 
 
@@ -403,13 +436,8 @@ class MainView extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            config: {
-                width: 500,
-                height: 500,
-                color: 'blue',
-            },  // initial configuration for the viz
             data: null,  // data for the viz
-            mouseover: false,  // info panel state (based on callbacks from viz)
+            ticker_configs: null,
             dm_config: {
 
                 'costs_per_trade': 0.1,
@@ -495,9 +523,9 @@ class MainView extends React.Component {
         console.log(this.state);
     }
 
-    handle_holding_update(component_id, holding_id, event){
+    handle_holding_update(component_id, holding_id, ticker){
         let dm_components = this.state.dm_components;
-        dm_components[component_id]['holdings'][holding_id][event.target.name] = event.target.value;
+        dm_components[component_id]['holdings'][holding_id]['ticker'] = ticker;
         this.setState({dm_components: dm_components});
     }
 
@@ -598,7 +626,9 @@ class MainView extends React.Component {
                             element.date_start = new Date(element.date[0], element.date[1]);
                             element.date_end = new Date(element.date[0], element.date[1] + 1);
                         });
-                        this.setState({data:data});
+                        console.log(d.ticker_configs);
+
+                        this.setState({data:data, ticker_configs: d.ticker_configs});
                         return true
                     })
             }).catch(() => {
@@ -628,8 +658,8 @@ class MainView extends React.Component {
                     key={component_id}
                     config={this.state.dm_components[component_id]}
                     total_allocated_weight={total_allocated_weight}
-                    handle_holding_update={(holding_id, event) => {
-                        this.handle_holding_update(component_id, holding_id, event)
+                    handle_holding_update={(holding_id, ticker) => {
+                        this.handle_holding_update(component_id, holding_id, ticker)
                     }}
                     handle_component_update={(event) => {
                         this.handle_component_update(component_id, event)
@@ -649,7 +679,7 @@ class MainView extends React.Component {
                     handle_tax_rate_update={(tax_type, rate) => this.handle_tax_rate_update(tax_type, rate)}
                 />
                 <div className="row">
-                    {/*{dm_components}*/}
+                    {dm_components}
                 </div>
                 <div className={"row"}>
                     <div id={"chart_container"}>
@@ -662,6 +692,16 @@ class MainView extends React.Component {
                 </div>
             </div>
         );
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        console.log("updated", this.state);
+        console.log("dm", this.state.dm_components[0]);
+        const qs = queryString.stringify(this.state.dm_components[0]);
+        console.log(qs);
+        console.log(queryString.parse(qs));
+
+        // window.history.pushState(this.state.dm_components);
     }
 }
 

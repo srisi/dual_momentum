@@ -4,6 +4,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+import { Autocomplete } from '@material-ui/lab';
+import { TextField } from '@material-ui/core';
+
 import './return_chart.css'
 
 import * as d3 from 'd3';
@@ -239,9 +242,9 @@ export class ReturnsChart extends React.Component {
             return (
                 <>
                     <svg ref={this.graphSVG}
-                         width={this.props.width}
-                         height={this.props.height}
-                         onMouseMove={(e) => this.handle_mouseover(e)}
+                        width={this.props.width}
+                        height={this.props.height}
+                        onMouseMove={(e) => this.handle_mouseover(e)}
                     >
                         <g>
                             <g>
@@ -295,8 +298,8 @@ export class ReturnsChart extends React.Component {
                         {/*However, after adding this rect all of the mousemove actions triggered*/}
                         {/*properly w/o having been bound to this rect. Not sure why...*/}
                         <rect id={"chart_mouseover_target"}
-                              width={this.props.width} height={this.props.height}
-                              style={{'fill': '#21252900'}}
+                            width={this.props.width} height={this.props.height}
+                            style={{'fill': '#21252900'}}
                         />
                     </svg>
                     <ChartTooltip
@@ -340,7 +343,7 @@ export class ReturnsChart extends React.Component {
 }
 
 ReturnsChart.propTypes={
-    data: PropTypes.array.isRequired,
+    data: PropTypes.array,
     width: PropTypes.number.isRequired,
     height: PropTypes.number.isRequired
 };
@@ -369,13 +372,13 @@ class ChartTooltip extends React.Component{
                 <div className={'chart_tooltip'}>
                     <table className="table">
                         <tbody>
-                        <tr>
-                            <td colSpan={2}>{date_start}-{date_end}</td>
-                        </tr>
-                        <tr>
-                            <td>Return</td>
-                            <td>{pl_percent}</td>
-                        </tr>
+                            <tr>
+                                <td colSpan={2}>{date_start}-{date_end}</td>
+                            </tr>
+                            <tr>
+                                <td>Return</td>
+                                <td>{pl_percent}</td>
+                            </tr>
                         </tbody>
                     </table>
 
