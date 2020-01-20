@@ -25,8 +25,6 @@ class MainInterface extends React.Component {
         const borrowing_costs = this.props.config.borrowing_costs_above_libor;
         const start_year = this.props.config.start_year;
 
-        console.log((borrowing_costs >= 0.00 &&   borrowing_costs < 100));
-
         let borrowing_costs_selector = null;
         if (leverage > 1) {
             borrowing_costs_selector = [
@@ -246,16 +244,26 @@ class ComponentSelector extends React.Component {
         // filled component
         } else {
             let holding_boxes = [];
-            for (const [_i, holding] of this.props.config.holdings.entries()) {
+
+            for (const [holding_id, ticker] of this.props.config.holdings.entries()) {
                 holding_boxes.push(
-                    <HoldingBox
-                        key={holding.id}
-                        holding={holding}
-                        handle_holding_update={(ticker) =>
-                            this.props.handle_holding_update(holding.id, ticker)
-                        }
+                    <AutoCompleteField
+                        key={`${holding_id}_${ticker}`}
+                        ticker={ticker}
+                        selection_options={ticker_configs}
+                        handle_holding_update={(ticker) => this.props.handle_holding_update(holding_id, ticker)}
                     />
                 );
+
+
+                // <HoldingBox
+                //     key={i}
+                //     holding={holding}
+                //     handle_holding_update={(ticker) =>
+                //         this.props.handle_holding_update(i, ticker)
+                //     }
+                // />
+                // );
             }
 
             // For buy and hold, only display and use the first ticker
@@ -416,7 +424,7 @@ class HoldingBox extends React.Component {
         //     </div>;
         return (
             <AutoCompleteField
-                ticker={this.props.holding.ticker}
+                ticker={this.props.ticker}
                 selection_options={ticker_configs}
                 handle_holding_update={(ticker) => this.props.handle_holding_update(ticker)}
             />
@@ -424,7 +432,7 @@ class HoldingBox extends React.Component {
     }
 }
 HoldingBox.propTypes={
-    holding: PropTypes.object.isRequired,
+    ticker: PropTypes.string.isRequired,
     handle_holding_update: PropTypes.func.isRequired
 };
 
@@ -470,12 +478,7 @@ class MainView extends React.Component {
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 2,
-                    'holdings': [
-                        {'id': 0, 'ticker': 'VTI'},
-                        {'id': 1, 'ticker': 'IEFA'},
-                        {'id': 2, 'ticker': 'IEMG'},
-                        {'id': 3, 'ticker': ''}
-                    ]
+                    'holdings': ['VTI', 'IEFA', 'IEMG'],
                 },
                 {
                     'name': 'REITs',
@@ -483,12 +486,7 @@ class MainView extends React.Component {
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 1,
-                    'holdings': [
-                        {'id': 0, 'ticker': 'VNQ'},
-                        {'id': 1, 'ticker': 'VNQI'},
-                        {'id': 2, 'ticker': 'REM'},
-                        {'id': 3, 'ticker': ''}
-                    ]
+                    'holdings': ['VNQ', 'VNQI', 'IEF']
                 },
                 {
                     'name': '',
@@ -503,7 +501,7 @@ class MainView extends React.Component {
     }
 
     handle_config_update(event){
-        let config = this.state.dm_config;
+        let config = {... this.state.dm_config};
         const ename = event.target.name;
         if (ename === 'simulate_taxes') {
             config['simulate_taxes'] = !config['simulate_taxes']
@@ -517,15 +515,15 @@ class MainView extends React.Component {
     }
 
     handle_tax_rate_update(tax_type, rate) {
-        let config = this.state.dm_config;
+        let config = {... this.state.dm_config};
         config.tax_rates[tax_type].rate = parseFloat(rate);
         this.setState({config: config});
         console.log(this.state);
     }
 
     handle_holding_update(component_id, holding_id, ticker){
-        let dm_components = this.state.dm_components;
-        dm_components[component_id]['holdings'][holding_id]['ticker'] = ticker;
+        let dm_components = this.state.dm_components.slice();
+        dm_components[component_id]['holdings'][holding_id] = ticker;
         this.setState({dm_components: dm_components});
     }
 
@@ -555,8 +553,6 @@ class MainView extends React.Component {
 
     modify_number_of_components(i, component_id){
         // Add or remove components
-
-        console.log("change components", i);
         let dm_components = this.state.dm_components;
 
         // add new component
@@ -568,9 +564,7 @@ class MainView extends React.Component {
                 'dual_momentum': true,
                 'lookback': 12,
                 'max_holdings': 1,
-                'holdings': [
-                    {'id': 0, 'ticker': ''}
-                ]
+                'holdings': ['']
             };
             // add new empty component at the end
             dm_components.push({'name': ''})
@@ -589,10 +583,7 @@ class MainView extends React.Component {
 
         // add new holding
         if (i === 1) {
-            dm_components[component_id]['holdings'].push({
-                'id': dm_components[component_id]['holdings'].length,
-                'ticker': '', 'percentage': 0
-            });
+            dm_components[component_id]['holdings'].push('');
         //remove holding
         } else {
             let holdings = dm_components[component_id]['holdings'];
@@ -645,6 +636,7 @@ class MainView extends React.Component {
 
         // get total weight allocated (should be 100)
         let total_allocated_weight = 0;
+
         for (const [_i, component] of this.state.dm_components.entries()) {
             if (!isNaN(component.weight)) {
                 total_allocated_weight += component.weight;
@@ -652,6 +644,7 @@ class MainView extends React.Component {
         }
 
         let dm_components = [];
+
         for (const [component_id, _d] of this.state.dm_components.entries()) {
             dm_components.push(
                 <ComponentSelector
@@ -694,12 +687,30 @@ class MainView extends React.Component {
         );
     }
 
+    stringify_config(){
+
+        const comp0 = this.state.dm_components[0];
+        const comp = this.state.dm_components;
+        console.log(queryString.stringify(comp0, {arrayFormat: 'comma'}));
+        console.log(queryString.stringify(comp, {arrayFormat: 'comma'}));
+
+        const j = JSON.stringify(this.state.dm_components);
+        const qs = queryString.stringify(j);
+        const parsed = queryString.parse(qs);
+        console.log(j);
+        console.log(qs);
+        console.log(parsed);
+        console.log(JSON.parse(parsed));
+
+    }
+
     componentDidUpdate(prevProps, prevState, snapshot) {
         console.log("updated", this.state);
-        console.log("dm", this.state.dm_components[0]);
-        const qs = queryString.stringify(this.state.dm_components[0]);
-        console.log(qs);
-        console.log(queryString.parse(qs));
+        this.stringify_config();
+        // console.log("dm", this.state.dm_components[0]);
+        // const qs = queryString.stringify(this.state.dm_components[0]);
+        // console.log(qs);
+        // console.log(queryString.parse(qs));
 
         // window.history.pushState(this.state.dm_components);
     }
