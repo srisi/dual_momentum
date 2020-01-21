@@ -2,10 +2,7 @@
 // https://swizec.com/blog/two-ways-build-zoomable-dataviz-component-d3-zoom-react/swizec/7753
 
 import React from 'react';
-import PropTypes from 'prop-types';
-
-import { Autocomplete } from '@material-ui/lab';
-import { TextField } from '@material-ui/core';
+import PropTypes, {node} from 'prop-types';
 
 import './return_chart.css'
 
@@ -49,7 +46,7 @@ export class ReturnsChart extends React.Component {
         // aggregated into one bar
         this.bars = null;
         // multiple functions calculate the width of the bar -> better to just store it here
-        this.barWidth = null;
+        this.bar_width = null;
 
         // margins of the element
         this.margin = {
@@ -84,9 +81,7 @@ export class ReturnsChart extends React.Component {
             // if zoom status changed, update paths during render
             (this.state.zoomTransform !== nextState.zoomTransform) ||
             // if we have data but no calculated bars yet, update paths during render
-            (nextProps.data && !this.bars) ||
-            // if drag, re-calculate paths
-            (this.state.drag_dx !== nextState.drag_dx)
+            (nextProps.data && !this.bars)
         ){
             this.recalculateD3Paths = true;
         } else {

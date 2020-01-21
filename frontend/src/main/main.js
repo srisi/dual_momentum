@@ -7,9 +7,17 @@ import PropTypes from 'prop-types';
 
 import queryString from 'query-string';
 
+// why does the commented out import not work?
+import * as json_stable_stringify from 'json-stable-stringify';
+// import {json_stable_stringify} from 'json-stable-stringify';
+
+import equal from "fast-deep-equal/es6/react";
+
 import {ReturnsChart} from "./return_chart";
 import {AutoCompleteField} from "./autocomplete";
 import {ticker_configs} from "./ticker_configs";
+
+
 
 import { getCookie } from '../common'
 import './main.css';
@@ -151,15 +159,23 @@ MainInterface.propTypes={
 
 class TaxConfig extends React.Component{
     constructor(props){
-        super(props)
+        super(props);
+
+        this.config_to_name = {
+            'short_term_cap_gains_rate': 'Short Term Cap Gains',
+            'long_term_cap_gains_rate': 'Long Term Cap Gains',
+            'munis_state_rate': 'Muni Bonds Income',
+            'treasuries_income_rate': 'Treasuries Income',
+            'gld_lt_rate': 'Gold LT Capital Gains',
+        }
     }
 
     render() {
         if (this.props.config.simulate_taxes){
             let selectors = [];
             for (const [tax_type, _i] of Object.entries(this.props.config.tax_rates)){
-                const tax_name = this.props.config.tax_rates[tax_type]['name'];
-                const tax_rate = this.props.config.tax_rates[tax_type]['rate'];
+                const tax_name = this.config_to_name[tax_type];
+                const tax_rate = this.props.config.tax_rates[tax_type];
                 const rate_valid = (tax_rate >= 0 && tax_rate <= 100);
                 selectors.push(
 
@@ -173,8 +189,8 @@ class TaxConfig extends React.Component{
                                     ((tax_rate >= 0 && tax_rate <= 100) ? "" : "is-invalid")}
                                 type="number" name={tax_type} min="0" max="100"
                                 value={tax_rate}
-                                onChange={(e) => this.props.handle_tax_rate_update(tax_type,
-                                    e.target.value)}
+                                onChange={(e) =>
+                                    this.props.handle_tax_rate_update(tax_type, e.target.value)}
                             />
                             <div className="input-group-append">
                                 <span className="input-group-text">%</span>
@@ -211,8 +227,6 @@ class ComponentSelector extends React.Component {
 
 
     render() {
-
-        console.log("cs", this.props.config);
 
         // figure out if this is the final empty component
         const is_empty_component = (!('weight' in this.props.config));
@@ -417,10 +431,14 @@ class MainView extends React.Component {
 
                 'simulate_taxes': true,
                 'tax_rates': {
-                    'short_term_cap_gains_rate': {'name': 'Short Term Cap Gains', 'rate':34},
-                    'long_term_cap_gains_rate': {'name': 'Long Term Cap Gains', 'rate': 20.1},
-                    'munis_state_rate': {'name': 'Muni Bonds Income ', 'rate': 12.1},
-                    'treasuries_income_rate': {'name': 'Treasuries Income ', 'rate': 9.82},
+                    'short_term_cap_gains_rate': 34,
+                    'long_term_cap_gains_rate':  20.1,
+                    'munis_state_rate':          12.1,
+                    'treasuries_income_rate':     9.82,
+                    // 'short_term_cap_gains_rate': {'name': 'Short Term Cap Gains', 'rate':34},
+                    // 'long_term_cap_gains_rate': {'name': 'Long Term Cap Gains', 'rate': 20.1},
+                    // 'munis_state_rate': {'name': 'Muni Bonds Income ', 'rate': 12.1},
+                    // 'treasuries_income_rate': {'name': 'Treasuries Income ', 'rate': 9.82},
                     // 'gld_lt_rate': {'name': 'Gold LT Capital Gains', 'rate': 20.1},
                 },
                 'money_market_holding': 'VGIT',
@@ -455,6 +473,14 @@ class MainView extends React.Component {
             ]
         };
         this.csrftoken = getCookie('csrftoken');
+        this.time_of_last_state_change = Date.now()
+    }
+
+    shouldComponentUpdate(nextProps, nextState, nextContext) {
+
+        console.log("shouldUpdate",
+            this.state.dm_components[0].holdings, nextState.dm_components[0].holdings);
+        return true
     }
 
     componentDidMount() {
@@ -463,31 +489,36 @@ class MainView extends React.Component {
 
     handle_config_update(event){
 
-
-        let config = {... this.state.dm_config};
+        let dm_config = {... this.state.dm_config};
         const ename = event.target.name;
 
         if (ename === 'simulate_taxes') {
-            config['simulate_taxes'] = !config['simulate_taxes']
+            dm_config['simulate_taxes'] = !dm_config['simulate_taxes']
         } else if (ename === 'start_year'){
-            config[ename] = parseInt(event.target.value);
+            dm_config[ename] = parseInt(event.target.value);
         } else if (ename === 'borrowing_costs_above_libor' || ename === 'leverage'){
-            config[ename] = parseFloat(event.target.value);
+            dm_config[ename] = parseFloat(event.target.value);
         }
-        this.setState({dm_config: config})
+        this.setState({dm_config})
     }
 
     handle_tax_rate_update(tax_type, rate) {
-        let config = {... this.state.dm_config};
-        config.tax_rates[tax_type].rate = parseFloat(rate);
-        this.setState({config: config});
-        console.log(this.state);
+        let dm_config = {... this.state.dm_config};
+        let tax_rates = {... dm_config.tax_rates};
+        tax_rates[tax_type] = parseFloat(rate);
+        dm_config.tax_rates = tax_rates;
+        this.setState({dm_config});
     }
 
     handle_holding_update(component_id, holding_id, ticker){
-        let dm_components = this.state.dm_components.slice();
-        dm_components[component_id]['holdings'][holding_id] = ticker;
-        this.setState({dm_components: dm_components});
+        let dm_components = [... this.state.dm_components];
+        let dm_component = {... dm_components[component_id]};
+        let holdings = [... dm_components[component_id]['holdings']];
+        holdings[holding_id] = ticker;
+
+        dm_component.holdings = holdings;
+        dm_components[component_id] = dm_component;
+        this.setState({dm_components});
     }
 
     handle_component_update(component_id, event){
@@ -497,31 +528,35 @@ class MainView extends React.Component {
             this.modify_number_of_components(1, null);
         } else {
 
-            let dm_components = this.state.dm_components;
-            let dm_component = this.state.dm_components[component_id];
+            let dm_components = [... this.state.dm_components];
+            let dm_component = {... dm_components[component_id]};
 
             if (event.target.name === 'dual_momentum') {
                 dm_component['dual_momentum'] = !dm_component['dual_momentum']
             } else if (event.target.name === 'weight') {
-                dm_components[component_id][event.target.name] = parseFloat(event.target.value);
+                dm_component[event.target.name] = parseFloat(event.target.value);
+                // dm_components[component_id][event.target.name] = parseFloat(event.target.value);
             } else if (event.target.name === 'lookback' || event.target.name === 'max_holdings') {
-                dm_components[component_id][event.target.name] = parseInt(event.target.value);
+                dm_component[event.target.name] = parseInt(event.target.value);
+                // dm_components[component_id][event.target.name] = parseInt(event.target.value);
             } else if (event.target.name === 'name') {
-                dm_components[component_id][event.target.name] = event.target.value;
+                dm_component[event.target.name] = event.target.value;
+                // dm_components[component_id][event.target.name] = event.target.value;
             }
-            this.setState({dm_components: dm_components});
+            dm_components[component_id] = dm_component;
+            this.setState({dm_components});
         }
     }
 
 
     modify_number_of_components(i, component_id){
         // Add or remove components
-        let dm_components = this.state.dm_components;
+        let dm_components = [... this.state.dm_components];
 
         // add new component
         if (i === 1) {
-            dm_components[dm_components.length - 1] = {
-                // 'id': dm_components.length,
+            let dm_component = {... dm_components[dm_components.length - 1]};
+            dm_component = {
                 'name': dm_components[dm_components.length -1].name,
                 'weight': 0,
                 'dual_momentum': true,
@@ -530,6 +565,7 @@ class MainView extends React.Component {
                 'holdings': ['']
             };
             // add new empty component at the end
+            dm_components[dm_components.length - 1] = dm_component;
             dm_components.push({'name': ''})
 
         // remove component
@@ -542,29 +578,35 @@ class MainView extends React.Component {
     }
 
     modify_number_of_holdings(i, component_id) {
-        let dm_components = this.state.dm_components;
+        let dm_components = [... this.state.dm_components];
+        let dm_component = {... dm_components[component_id]};
+        let holdings = [... dm_component.holdings];
 
         // add new holding
         if (i === 1) {
-            dm_components[component_id]['holdings'].push('');
+            holdings.push('');
+            dm_component.holdings = holdings;
+            dm_components[component_id] = dm_component
         //remove holding
         } else {
-            let holdings = dm_components[component_id]['holdings'];
+            // let holdings = dm_components[component_id]['holdings'];
             if (holdings.length > 0) {
-
                 // if dual momentum mode, remove last holding
-                if (dm_components[component_id]['dual_momentum']) {
+                if (dm_component['dual_momentum']) {
                     holdings = holdings.slice(0, -1);
                 } else { // if buy and hold, remove the only remaining holding
                     holdings = [];
                 }
-                dm_components[component_id]['holdings'] = holdings;
+                dm_component.holdings = holdings;
+                dm_components[component_id] = dm_component
+
+                // dm_components[component_id]['holdings'] = holdings;
             } else {
                 this.modify_number_of_components(-1, component_id);
                 return
             }
         }
-        this.setState({dm_components: dm_components});
+        this.setState({dm_components});
     }
 
     async load_result_data() {
@@ -580,8 +622,6 @@ class MainView extends React.Component {
                             element.date_start = new Date(element.date[0], element.date[1]);
                             element.date_end = new Date(element.date[0], element.date[1] + 1);
                         });
-                        console.log(d.ticker_configs);
-
                         this.setState({data:data, ticker_configs: d.ticker_configs});
                         return true
                     })
@@ -610,12 +650,10 @@ class MainView extends React.Component {
 
 
         for (const [component_id, _d] of this.state.dm_components.entries()) {
-
-            console.log(this.state.dm_components[component_id]);
             dm_components.push(
                 <ComponentSelector
                     key={component_id}
-                    config={this.state.dm_components[component_id]}
+                    config={{... this.state.dm_components[component_id]}}
                     total_allocated_weight={total_allocated_weight}
                     handle_holding_update={(holding_id, ticker) => {
                         this.handle_holding_update(component_id, holding_id, ticker)
@@ -633,7 +671,7 @@ class MainView extends React.Component {
         return (
             <div className="container">
                 <MainInterface
-                    config={this.state.dm_config}
+                    config={{... this.state.dm_config}}
                     handle_config_update={(e) => this.handle_config_update(e)}
                     handle_tax_rate_update={(tax_type, rate) =>
                         this.handle_tax_rate_update(tax_type, rate)}
@@ -654,20 +692,47 @@ class MainView extends React.Component {
         );
     }
 
-    stringify_config(){
-        const qs = queryString.stringify({
-            'dm_components':  JSON.stringify(this.state.dm_components),
-            'dm_config': JSON.stringify(this.state.dm_config)
+
+    update_url(old_stringified_config){
+
+
+        let cur_stringified_config = json_stable_stringify({
+            'dm_components':  this.state.dm_components,
+            'dm_config': this.state.dm_config
         });
+
+        console.log("same?", old_stringified_config === cur_stringified_config);
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) {
 
-        let stringified_config = queryString.stringify({
-            'dm_components':  JSON.stringify(this.state.dm_components),
-            'dm_config': JSON.stringify(this.state.dm_config)
+        const time_now = Date.now();
+        console.log("time", time_now - this.time_of_last_state_change);
+
+        console.log(this.state);
+
+        console.log(this.state.dm_components[0].holdings, prevState.dm_components[0].holdings);
+        console.log(
+            equal(prevState.dm_components, this.state.dm_components),
+            equal(prevState.dm_config, this.state.dm_config)
+        );
+
+        // this.time_of_last_state_change
+
+
+        let stringified_config = json_stable_stringify({
+            'dm_components':  this.state.dm_components,
+            'dm_config': this.state.dm_config
         });
-        stringified_config += '';
+
+        setTimeout(() => {
+            this.update_url(stringified_config)
+        }, 2000);
+        console.log("main");
+
+        console.log(stringified_config);
+        const url_config =  queryString.stringify({'conf': stringified_config});
+        console.log(url_config);
 
         // window.history.pushState(this.state.dm_components);
     }
