@@ -11,6 +11,7 @@ import pandas_datareader.data as web
 from IPython import embed
 from dual_momentum.dm_config import DATA_PATH
 from dual_momentum.ticker_config import TICKER_CONFIG
+from dual_momentum.utilities import file_exists_and_less_than_1hr_old
 
 
 class TickerData:
@@ -18,18 +19,17 @@ class TickerData:
     def __init__(self, ticker, use_early_replacements=True, force_new_data=False,
                  day_of_month_for_monthly_data=-1):
 
-        # delete all ticker data older than 1 hour
-        self.delete_old_data()
+        self.use_early_replacements = use_early_replacements
+        self.ticker = ticker
 
-        pickle_path = Path(DATA_PATH, 'clean_ticker_data',
-                           f'{ticker}_replacement_{use_early_replacements}.pickle')
+        pickle_path = self.file_path
 
         # if pickle data stored in the last hour, load it.
-        if not force_new_data and pickle_path.exists():
+        if not force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
             with open(pickle_path, 'rb') as infile:
                 loaded_ticker_data = pickle.load(infile)
             self.__dict__.update(loaded_ticker_data.__dict__)
-            print("loaded from disk")
+            print("loaded from disk", ticker)
 
         # otherwise, create it anew.
         else:
@@ -66,22 +66,26 @@ class TickerData:
     def __repr__(self):
         return str(self.data_daily)
 
-    @staticmethod
-    def delete_old_data(force_delete_all_data=False):
-        """
-        Deletes all ticker data older than 1 hour
+    @property
+    def file_path(self):
+        return Path(DATA_PATH, 'clean_ticker_data',
+             f'{self.ticker}_replacement_{self.use_early_replacements}.pickle')
 
-        :param force_delete_all_data: if active, deletes all existing ticker data
-
-        :return:
-        """
-        for p in ['clean_ticker_data', 'stock_data']:
-            directory = Path(DATA_PATH, p)
-            for file in os.listdir(directory):
-                file_path = Path(directory, file)
-                if (force_delete_all_data or (time.time() - os.path.getmtime(file_path) > 3600)):
-                    print(file_path)
-                    os.remove(file_path)
+    # @staticmethod
+    # def delete_old_data(force_delete_all_data=False):
+    #     """
+    #     Deletes all ticker data older than 1 hour
+    #
+    #     :param force_delete_all_data: if active, deletes all existing ticker data
+    #
+    #     :return:
+    #     """
+    #     for p in ['clean_ticker_data', 'stock_data']:
+    #         directory = Path(DATA_PATH, p)
+    #         for file in os.listdir(directory):
+    #             file_path = Path(directory, file)
+    #             if (force_delete_all_data or (time.time() - os.path.getmtime(file_path) > 3600)):
+    #                 os.remove(file_path)
 
     def load_ticker_data(self):
         """

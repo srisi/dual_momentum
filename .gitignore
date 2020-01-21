@@ -175,3 +175,7 @@ data/clean_ticker_data/
 data/index_data/
 
 data/stock_data/
+*.pickle
+*.ftr
+*.lprof
+*.prof

@@ -3,6 +3,12 @@ from dual_momentum.fred_data import load_fred_data
 from dual_momentum.ticker_data import TickerData
 import re
 import numpy as np
+import pandas as pd
+from pathlib import Path
+from dual_momentum.dm_config import DATA_PATH
+from dual_momentum.utilities import file_exists_and_less_than_1hr_old
+
+import hashlib
 
 from IPython import embed
 
@@ -82,43 +88,62 @@ class DualMomentumComponent:
         self.df = None
 
 
+
+    @property
+    def file_path(self):
+
+        string_to_hash = (f'{self.name}{self.ticker_list}{self.lookback_months}{self.max_holdings}'
+                    f'{self.start_date}{self.use_dual_momentum}{self.money_market_holding}'
+                    f'{self.force_new_data}{self.use_early_replacements}{self.weight}'
+                    f'{self.day_of_month_for_monthly_data}')
+        md5 = hashlib.md5(string_to_hash.encode('utf8')).hexdigest()
+        print(DATA_PATH.absolute())
+
+        return Path(DATA_PATH, 'dm_component_data', f'{md5}.pickle')
+
     def run_dual_momentum(self):
         """
         Runs a dual-momentum backtest
+        Tries to load from disk first, then simulates
 
         :return:
         """
 
-        # initialize df with tbil rates
-        tbil_df = load_fred_data('tbil_rate', return_type='df')
-        self.df = TickerData('ONES').data_monthly
-        self.df.drop(['Close', 'Adj Close'], inplace=True, axis=1)
-        self.df['tbil_rate'] = tbil_df['index']
-        self.df['tbil_rate'] += 100
-        self.df['tbil_performance_1'] = (self.df['tbil_rate'] / 100) ** (1 / 12)
-        self.df['holding'] = ''
-        self.df['cap_gains'] = 0.0
-        self.df['div_gains'] = 0.0
+        if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
+            print("using cached dm component data", self.__hash__())
+            self.df = pd.read_pickle(self.file_path)
+        else:
+            # initialize df with tbil rates
+            tbil_df = load_fred_data('tbil_rate', return_type='df')
+            self.df = TickerData('ONES').data_monthly
+            self.df.drop(['Close', 'Adj Close'], inplace=True, axis=1)
+            self.df['tbil_rate'] = tbil_df['index']
+            self.df['tbil_rate'] += 100
+            self.df['tbil_performance_1'] = (self.df['tbil_rate'] / 100) ** (1 / 12)
+            self.df['holding'] = ''
+            self.df['cap_gains'] = 0.0
+            self.df['div_gains'] = 0.0
 
-        self.df['performance_pretax'] = 1.0
-        self.df['taxes'] = 0.0
-        self.df['performance_posttax'] = 1.0
-        self.df['cash_portion'] = 0.0
+            self.df['performance_pretax'] = 1.0
+            self.df['taxes'] = 0.0
+            self.df['performance_posttax'] = 1.0
+            self.df['cash_portion'] = 0.0
 
-        if self.money_market_holding != 'TBIL':
-            self.add_ticker_to_df(self.money_market_holding)
+            if self.money_market_holding != 'TBIL':
+                self.add_ticker_to_df(self.money_market_holding)
 
-        for ticker in self.ticker_list:
-            self.add_ticker_to_df(ticker)
+            for ticker in self.ticker_list:
+                self.add_ticker_to_df(ticker)
 
-        # identify the holdings for each month
-        self.identify_holdings_by_month()
+            # identify the holdings for each month
+            self.identify_holdings_by_month()
 
-        # calculate the returns based on the holdings
-        self.calculate_returns_based_on_holdings()
+            # calculate the returns based on the holdings
+            self.calculate_returns_based_on_holdings()
+
+            self.df.to_pickle(self.file_path)
 
         return self.df
-
 
     def identify_holdings_by_month(self):
         """
@@ -320,5 +345,6 @@ if __name__ == '__main__':
     dmc = DualMomentumComponent(name='equities', ticker_list=ticker_list, lookback_months=12,
                                 max_holdings=1, start_date='1980-01-01', use_dual_momentum=True,
                                 money_market_holding='VGIT', tax_config=tax_config)
+
     dmc.run_dual_momentum()
     embed()

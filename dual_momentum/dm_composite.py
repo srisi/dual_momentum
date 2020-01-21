@@ -3,10 +3,13 @@ from IPython import embed
 from dual_momentum.ticker_data import TickerData
 from dual_momentum.fred_data import load_fred_data
 import numpy as np
+import pandas as pd
 
 class DualMomentumComposite:
     """
     DualMomentumComposite simulates multiple DM components, e.g. reits and equities
+
+    Takes 0.03seconds
 
     """
 
@@ -53,7 +56,6 @@ class DualMomentumComposite:
         self.libor = load_fred_data('libor_rate')
 
         self.simulation_finished = False
-
 
     def run_multi_component_dual_momentum(self):
 
@@ -103,14 +105,21 @@ class DualMomentumComposite:
         df['performance_pretax_min_tbil'] = 1.0
 
 
-        for idx, (date, row) in enumerate(self.df.iterrows()):
-            # skip until all dual momentum components have enough lookback data
+        # pandas dataframes are slow with df.iterrows. It's much faster to turn the df into
+        # a dict and then pick values from it
+        df_as_dict = df.to_dict('index')
+        df_indexes = list(df.index)
+
+        for idx, date in enumerate(df_indexes):
             if idx < max([c.lookback_months for c in self.components if c.use_dual_momentum]):
                 continue
 
+            row = df_as_dict[date]
             year, month = date
 
-            prev_total = df.at[df.index[idx - 1], 'lev_performance_posttax']
+            # prev_total = df.at[df.index[idx - 1], 'lev_performance_posttax']
+            prev_total = df_as_dict[df_indexes[idx-1]]['lev_performance_posttax']
+
             # months_for_lev would go here...
 
             # calculate leveraged return and update cash portion accordingly
@@ -142,10 +151,15 @@ class DualMomentumComposite:
 
                 # we only pay leverage cost for the percentage of the portfolio that's leveraged
                 leverage_cost = leverage_percentage * monthly_borrowing_rate
-                df.at[date, 'leverage_cost'] = leverage_cost
+
+                #DUP
+                df_as_dict[date]['leverage_cost'] = leverage_cost
+                # df.at[date, 'leverage_cost'] = leverage_cost
+
                 lev_performance_pretax -= leverage_cost
 
-            taxes_due_total = taxes_month + df.at[df.index[idx - 1], 'taxes_due_total']
+            # taxes_due_total = taxes_month + df.at[df.index[idx - 1], 'taxes_due_total']
+            taxes_due_total = taxes_month + df_as_dict[df_indexes[idx - 1]]['taxes_due_total']
             taxes_paid = 0
 
             # calculate returns after taxes
@@ -156,18 +170,35 @@ class DualMomentumComposite:
                 taxes_paid = taxes_due_total
                 taxes_due_total = 0
 
-            df.at[date, 'lev_performance_pretax'] = lev_performance_pretax
-            df.at[date, 'taxes_month'] = taxes_month
-            df.at[date, 'taxes_due_total'] = taxes_due_total
-            df.at[date, 'taxes_paid'] = taxes_paid
-            df.at[date, 'lev_performance_posttax'] = lev_performance_posttax
-            df.at[date, 'leverage'] = self.leverage
-            df.at[date, 'cash'] = max(0, percentage_cash)
+            # #DUP
+            # df.at[date, 'lev_performance_pretax'] = lev_performance_pretax
+            # df.at[date, 'taxes_month'] = taxes_month
+            # df.at[date, 'taxes_due_total'] = taxes_due_total
+            # df.at[date, 'taxes_paid'] = taxes_paid
+            # df.at[date, 'lev_performance_posttax'] = lev_performance_posttax
+            # df.at[date, 'leverage'] = self.leverage
+            # df.at[date, 'cash'] = max(0, percentage_cash)
 
+            df_as_dict[date]['lev_performance_pretax'] = lev_performance_pretax
+            df_as_dict[date]['taxes_month'] = taxes_month
+            df_as_dict[date]['taxes_due_total'] = taxes_due_total
+            df_as_dict[date]['taxes_paid'] = taxes_paid
+            df_as_dict[date]['lev_performance_posttax'] = lev_performance_posttax
+            df_as_dict[date]['leverage'] = self.leverage
+            df_as_dict[date]['cash'] = max(0, percentage_cash)
+
+        self.df = pd.DataFrame.from_dict(df_as_dict, orient='index')
 
         self.simulation_finished = True
 
     def get_cumulative_performance(self, pre_or_posttax='pretax'):
+        """
+
+        0.003seconds -> not worth profiling
+
+        :param pre_or_posttax:
+        :return:
+        """
 
         if not self.simulation_finished:
             raise ValueError('Can only calculate performance after '
@@ -183,6 +214,10 @@ class DualMomentumComposite:
             return self.df['performance_posttax_cumulative']
 
     def get_result_json(self):
+        """
+        Profiling: same issue (iterrows, row) as main dual momentum
+        :return:
+        """
 
         import json
 
@@ -207,15 +242,11 @@ class DualMomentumComposite:
                     'value_end': row['performance_pretax_cumulative']
                 })
 
-                with open('temp_data.json', 'w') as out:
-                    json.dump(values, out)
+            with open('temp_data.json', 'w') as out:
+                json.dump(values, out)
 
 
             return values
-
-
-
-
 
 
 
@@ -246,13 +277,18 @@ if __name__ == '__main__':
         1.30:  0.2, 1.20:  0.1, 1.15:  0.1, 1.10:  0.0, 1.05:  0.0
     }
 
+    import time
+    s = time.time()
+
     dm = DualMomentumComposite(parts=parts, money_market_holding=money_market_holding,
                                momentum_leverages=momentum_leverages, tax_config=tax_config,
                                start_date=start_date,
                                leverage=leverage,
                                borrowing_cost_above_libor=borrowing_cost_above_libor)
+
     dm.run_multi_component_dual_momentum()
     dm.get_result_json()
+    print(time.time() - s )
 
 
 

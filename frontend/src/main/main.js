@@ -169,7 +169,8 @@ class TaxConfig extends React.Component{
                                 <span className="input-group-text tax_type_name">{tax_name}</span>
                             </div>
                             <input
-                                className={"form-control rem-5 " + ((tax_rate >= 0 && tax_rate <= 100) ? "" : "is-invalid")}
+                                className={"form-control rem-5 " +
+                                    ((tax_rate >= 0 && tax_rate <= 100) ? "" : "is-invalid")}
                                 type="number" name={tax_type} min="0" max="100"
                                 value={tax_rate}
                                 onChange={(e) => this.props.handle_tax_rate_update(tax_type,
@@ -211,6 +212,8 @@ class ComponentSelector extends React.Component {
 
     render() {
 
+        console.log("cs", this.props.config);
+
         // figure out if this is the final empty component
         const is_empty_component = (!('weight' in this.props.config));
 
@@ -244,26 +247,16 @@ class ComponentSelector extends React.Component {
         // filled component
         } else {
             let holding_boxes = [];
-
             for (const [holding_id, ticker] of this.props.config.holdings.entries()) {
                 holding_boxes.push(
                     <AutoCompleteField
                         key={`${holding_id}_${ticker}`}
                         ticker={ticker}
                         selection_options={ticker_configs}
-                        handle_holding_update={(ticker) => this.props.handle_holding_update(holding_id, ticker)}
+                        handle_holding_update={(ticker) =>
+                            this.props.handle_holding_update(holding_id, ticker)}
                     />
                 );
-
-
-                // <HoldingBox
-                //     key={i}
-                //     holding={holding}
-                //     handle_holding_update={(ticker) =>
-                //         this.props.handle_holding_update(i, ticker)
-                //     }
-                // />
-                // );
             }
 
             // For buy and hold, only display and use the first ticker
@@ -313,7 +306,8 @@ class ComponentSelector extends React.Component {
                                 !this.props.config.dual_momentum) ? "" : " is-invalid")}
                             disabled={!this.props.config.dual_momentum}
                             type="number" name="max_holdings" min="1" max="2"
-                            value={this.props.config.dual_momentum ? this.props.config.max_holdings : ""}
+                            value={this.props.config.dual_momentum ?
+                                this.props.config.max_holdings : ""}
                             onChange={(e) => this.props.handle_component_update(e)}
                         />
                         <div className="invalid-feedback">
@@ -332,7 +326,7 @@ class ComponentSelector extends React.Component {
                                 "form-control" : "form-control is-invalid"}
                             disabled={!this.props.config.dual_momentum}
                             type="number" name="lookback" min="1" max="24"
-                            value={this.props.config.dual_momentum ? this.props.config.lookback : ""}
+                            value={this.props.config.dual_momentum ? this.props.config.lookback :""}
                             onChange={(e) => this.props.handle_component_update(e)}
                         />
                         <div className="input-group-append">
@@ -383,11 +377,11 @@ class ComponentSelector extends React.Component {
 
                     {/*Add / Remove ticker buttons*/}
                     {(this.props.config.dual_momentum || this.props.config.holdings.length === 0) ?
-                        <button type="button" className="btn btn-outline-primary"
+                        <button type="button" className="btn btn-sm btn-outline-primary"
                             onClick={() => this.props.modify_number_of_holdings(1)}
                         >Add Ticker</button> : null
                     }
-                    <button type="button" className="btn btn-outline-primary button_remove"
+                    <button type="button" className="btn btn-sm btn-outline-primary button_remove"
                         onClick={() => this.props.modify_number_of_holdings(-1)}
                     >Remove {this.props.config.holdings.length > 0 ? 'Ticker' : 'Part'}</button>
                 </div>
@@ -401,39 +395,6 @@ ComponentSelector.propTypes={
     handle_component_update: PropTypes.func.isRequired,
     handle_holding_update: PropTypes.func.isRequired,
     modify_number_of_holdings: PropTypes.func.isRequired
-};
-
-class HoldingBox extends React.Component {
-    // the box for one single holding
-
-    constructor(props){
-        super(props);
-    }
-
-    render(){
-        // let input =
-        //     <div className="input-group input-group-sm mb-1">
-        //         <div className="input-group-prepend">
-        //             <span className="input-group-text rem-6">Ticker {this.props.holding.id + 1}: </span>
-        //         </div>
-        //         <input className="form-control input_ticker"
-        //             type="text" name="ticker" maxLength="20" size="20"
-        //             value={this.props.holding.ticker}
-        //             onChange={(e) => this.props.handle_holding_update(e)}
-        //         />
-        //     </div>;
-        return (
-            <AutoCompleteField
-                ticker={this.props.ticker}
-                selection_options={ticker_configs}
-                handle_holding_update={(ticker) => this.props.handle_holding_update(ticker)}
-            />
-        )
-    }
-}
-HoldingBox.propTypes={
-    ticker: PropTypes.string.isRequired,
-    handle_holding_update: PropTypes.func.isRequired
 };
 
 
@@ -478,7 +439,7 @@ class MainView extends React.Component {
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 2,
-                    'holdings': ['VTI', 'IEFA', 'IEMG'],
+                    'holdings': ['VTI', 'IEFA', 'IEMG', ''],
                 },
                 {
                     'name': 'REITs',
@@ -486,7 +447,7 @@ class MainView extends React.Component {
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 1,
-                    'holdings': ['VNQ', 'VNQI', 'IEF']
+                    'holdings': ['VNQ', 'VNQI', 'IEF', '']
                 },
                 {
                     'name': '',
@@ -501,8 +462,11 @@ class MainView extends React.Component {
     }
 
     handle_config_update(event){
+
+
         let config = {... this.state.dm_config};
         const ename = event.target.name;
+
         if (ename === 'simulate_taxes') {
             config['simulate_taxes'] = !config['simulate_taxes']
         } else if (ename === 'start_year'){
@@ -510,8 +474,7 @@ class MainView extends React.Component {
         } else if (ename === 'borrowing_costs_above_libor' || ename === 'leverage'){
             config[ename] = parseFloat(event.target.value);
         }
-
-        this.setState({config : config})
+        this.setState({dm_config: config})
     }
 
     handle_tax_rate_update(tax_type, rate) {
@@ -571,8 +534,8 @@ class MainView extends React.Component {
 
         // remove component
         } else {
-            console.log(component_id, dm_components.slice(0, component_id), dm_components.slice(component_id +1));
-            dm_components = dm_components.slice(0, component_id).concat(dm_components.slice(component_id +1));
+            dm_components = dm_components.slice(
+                0, component_id).concat(dm_components.slice(component_id +1));
         }
 
         this.setState({dm_components: dm_components});
@@ -645,7 +608,10 @@ class MainView extends React.Component {
 
         let dm_components = [];
 
+
         for (const [component_id, _d] of this.state.dm_components.entries()) {
+
+            console.log(this.state.dm_components[component_id]);
             dm_components.push(
                 <ComponentSelector
                     key={component_id}
@@ -669,7 +635,8 @@ class MainView extends React.Component {
                 <MainInterface
                     config={this.state.dm_config}
                     handle_config_update={(e) => this.handle_config_update(e)}
-                    handle_tax_rate_update={(tax_type, rate) => this.handle_tax_rate_update(tax_type, rate)}
+                    handle_tax_rate_update={(tax_type, rate) =>
+                        this.handle_tax_rate_update(tax_type, rate)}
                 />
                 <div className="row">
                     {dm_components}
@@ -688,29 +655,19 @@ class MainView extends React.Component {
     }
 
     stringify_config(){
-
-        const comp0 = this.state.dm_components[0];
-        const comp = this.state.dm_components;
-        console.log(queryString.stringify(comp0, {arrayFormat: 'comma'}));
-        console.log(queryString.stringify(comp, {arrayFormat: 'comma'}));
-
-        const j = JSON.stringify(this.state.dm_components);
-        const qs = queryString.stringify(j);
-        const parsed = queryString.parse(qs);
-        console.log(j);
-        console.log(qs);
-        console.log(parsed);
-        console.log(JSON.parse(parsed));
-
+        const qs = queryString.stringify({
+            'dm_components':  JSON.stringify(this.state.dm_components),
+            'dm_config': JSON.stringify(this.state.dm_config)
+        });
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) {
-        console.log("updated", this.state);
-        this.stringify_config();
-        // console.log("dm", this.state.dm_components[0]);
-        // const qs = queryString.stringify(this.state.dm_components[0]);
-        // console.log(qs);
-        // console.log(queryString.parse(qs));
+
+        let stringified_config = queryString.stringify({
+            'dm_components':  JSON.stringify(this.state.dm_components),
+            'dm_config': JSON.stringify(this.state.dm_config)
+        });
+        stringified_config += '';
 
         // window.history.pushState(this.state.dm_components);
     }

@@ -42,6 +42,7 @@ export class AutoCompleteField extends React.Component {
     }
 
     sanitize_input_and_handle_update(reason, value){
+
         let ticker = value;
         if (reason === 'reset'){
             ticker = this.display_name_to_ticker[value];
@@ -49,7 +50,7 @@ export class AutoCompleteField extends React.Component {
 
         // setting a value on init also triggers a reset with undefined value
         // -> only update if value is not undefined
-        if (ticker) {
+        if (ticker !== undefined) {
             this.props.handle_holding_update(ticker);
         }
     }

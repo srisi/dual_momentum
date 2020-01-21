@@ -286,15 +286,19 @@ export class ReturnsChart extends React.Component {
                                 x1={this.margin.left}
                                 x2={this.props.width - this.margin.right}
                                 // y data + height if loss
-                                y1={ttdata ? ttdata.y + (ttdata.gained_money ? 0 : ttdata.height) : -1000}
-                                y2={ttdata ? ttdata.y + (ttdata.gained_money ? 0 : ttdata.height) : -1000}
+                                y1={ttdata ?
+                                    ttdata.y + (ttdata.gained_money ? 0 : ttdata.height) :
+                                    -1000}
+                                y2={ttdata ?
+                                    ttdata.y + (ttdata.gained_money ? 0 : ttdata.height) :
+                                    -1000}
                                 style={{'stroke': 'black', 'strokeDasharray': '4'}}
                             />
                         </g>
 
                         {/*My idea was to create a transparent rect that acts as the target for */}
                         {/*mousemove. Before, moving the mouse over bars made the crosshairs */}
-                        {/*disappear. My idea was to bind mousemove to the top element, i.e. this rect.*/}
+                        {/*disappear. My idea was to bind mousemove to the top element,this rect.*/}
                         {/*However, after adding this rect all of the mousemove actions triggered*/}
                         {/*properly w/o having been bound to this rect. Not sure why...*/}
                         <rect id={"chart_mouseover_target"}
