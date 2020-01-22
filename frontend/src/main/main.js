@@ -609,11 +609,13 @@ class MainView extends React.Component {
         this.setState({dm_components});
     }
 
-    async load_result_data() {
-        let url_params = 'conf=%7B%22dm_components%22%3A%5B%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VTI%22%2C%22IEFA%22%2C%22IEMG%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A2%2C%22name%22%3A%22Equities%22%2C%22weight%22%3A0.5%7D%2C%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VNQ%22%2C%22VNQI%22%2C%22IEF%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A1%2C%22name%22%3A%22REITs%22%2C%22weight%22%3A0.5%7D%2C%7B%22name%22%3A%22%22%7D%5D%2C%22dm_config%22%3A%7B%22borrowing_costs_above_libor%22%3A1.5%2C%22costs_per_trade%22%3A0.1%2C%22leverage%22%3A1%2C%22momentum_leverages%22%3A%7B%22config%22%3A%7B%220.8%22%3A-0.3%2C%220.85%22%3A-0.3%2C%220.9%22%3A-0.2%2C%220.95%22%3A-0.2%2C%221.05%22%3A0%2C%221.1%22%3A0%2C%221.15%22%3A0.1%2C%221.2%22%3A0.1%2C%221.3%22%3A0.2%7D%2C%22months_for_leverage%22%3A3%7D%2C%22money_market_holding%22%3A%22VGIT%22%2C%22simulate_taxes%22%3Atrue%2C%22start_year%22%3A1980%2C%22tax_rates%22%3A%7B%22long_term_cap_gains_rate%22%3A20.1%2C%22munis_state_rate%22%3A12.1%2C%22short_term_cap_gains_rate%22%3A34%2C%22treasuries_income_rate%22%3A9.82%7D%7D%7D';
-        let url = 'get_test_data';
+    async load_result_data(url_params) {
+        if (url_params === undefined){
+            url_params = 'conf=%7B%22dm_components%22%3A%5B%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VTI%22%2C%22IEFA%22%2C%22IEMG%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A2%2C%22name%22%3A%22Equities%22%2C%22weight%22%3A0.5%7D%2C%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VNQ%22%2C%22VNQI%22%2C%22IEF%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A1%2C%22name%22%3A%22REITs%22%2C%22weight%22%3A0.5%7D%2C%7B%22name%22%3A%22%22%7D%5D%2C%22dm_config%22%3A%7B%22borrowing_costs_above_libor%22%3A1.5%2C%22costs_per_trade%22%3A0.1%2C%22leverage%22%3A1%2C%22momentum_leverages%22%3A%7B%22config%22%3A%7B%220.8%22%3A-0.3%2C%220.85%22%3A-0.3%2C%220.9%22%3A-0.2%2C%220.95%22%3A-0.2%2C%221.05%22%3A0%2C%221.1%22%3A0%2C%221.15%22%3A0.1%2C%221.2%22%3A0.1%2C%221.3%22%3A0.2%7D%2C%22months_for_leverage%22%3A3%7D%2C%22money_market_holding%22%3A%22VGIT%22%2C%22simulate_taxes%22%3Atrue%2C%22start_year%22%3A1980%2C%22tax_rates%22%3A%7B%22long_term_cap_gains_rate%22%3A20.1%2C%22munis_state_rate%22%3A12.1%2C%22short_term_cap_gains_rate%22%3A34%2C%22treasuries_income_rate%22%3A9.82%7D%7D%7D';
+        }
+        let url = 'get_test_data?' + url_params;
         // url_params = undefined;
-        url += (url_params !== undefined)? ('?' + url_params) : '';
+        // url += (url_params !== undefined)? ('?' + url_params) : '';
         console.log("ur", url);
         console.log(this.state.dm_components[0].weight);
         fetch(url)
@@ -681,15 +683,15 @@ class MainView extends React.Component {
                     handle_tax_rate_update={(tax_type, rate) =>
                         this.handle_tax_rate_update(tax_type, rate)}
                 />
-                <div className="row">
+                <div className="row" id="components_row">
                     {dm_components}
                 </div>
-                <div className={"row"}>
+                <div className={"row"} id={"chart_row"}>
                     <div id={"chart_container"}>
                         <ReturnsChart
                             data={this.state.data}
                             width={800}
-                            height={400}
+                            height={600}
                         />
                     </div>
                 </div>
@@ -707,9 +709,8 @@ class MainView extends React.Component {
         });
         if (old_stringified_config === cur_stringified_config) {
             const url_params = queryString.stringify({'conf': cur_stringified_config});
-            console.log(url_params);
             window.history.pushState(this.state.dm_config, "",url_params);
-            // this.load_result_data(url_params)
+            this.load_result_data(url_params)
         }
 
         console.log("same?", old_stringified_config === cur_stringified_config);
@@ -717,33 +718,31 @@ class MainView extends React.Component {
 
     componentDidUpdate(prevProps, prevState, snapshot) {
 
-        const time_now = Date.now();
-        console.log("time", time_now - this.time_of_last_state_change);
 
-        console.log(this.state);
-
-        console.log(this.state.dm_components[0].holdings, prevState.dm_components[0].holdings);
-        console.log(
-            equal(prevState.dm_components, this.state.dm_components),
-            equal(prevState.dm_config, this.state.dm_config)
+        // config has changed if either dm_components or dm_config has change
+        const dm_config_has_changed = (
+            !equal(prevState.dm_components, this.state.dm_components) ||
+            !equal(prevState.dm_config, this.state.dm_config)
         );
 
-        // this.time_of_last_state_change
+        console.log("has changed?", dm_config_has_changed);
+
+        // if config has changed, wait for 2 seconds.
+        // if no further changes are incoming, update the url and the graph
+        if (dm_config_has_changed){
+            const stringified_config = json_stable_stringify({
+                'dm_components':  this.state.dm_components,
+                'dm_config': this.state.dm_config
+            });
+            setTimeout(() => {
+                this.update_url_if_no_change_after_2seconds(stringified_config)
+            }, 2000);
+        }
 
 
-        let stringified_config = json_stable_stringify({
-            'dm_components':  this.state.dm_components,
-            'dm_config': this.state.dm_config
-        });
 
-        setTimeout(() => {
-            this.update_url_if_no_change_after_2seconds(stringified_config)
-        }, 2000);
-        console.log("main");
 
-        console.log(stringified_config);
-        const url_config =  queryString.stringify({'conf': stringified_config});
-        console.log(url_config);
+
 
         // window.history.pushState(this.state.dm_components);
     }

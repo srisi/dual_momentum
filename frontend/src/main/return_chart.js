@@ -21,6 +21,9 @@ export class ReturnsChart extends React.Component {
 
         // the main graph SVG
         this.graphSVG = React.createRef();
+        this.graph_width = 800;
+        //     document.getElementById('components_row').clientWidth);
+        // document.getElementById('chart_row').clientWidth);
 
         // if true, d3 paths are recalculated
         this.recalculateD3Paths = true;
@@ -57,11 +60,11 @@ export class ReturnsChart extends React.Component {
         };
 
         this.zoom = d3.zoom()
-            // extent of the zoom (10% to 500%)
+            // extent of the zoom (10% to 800%)
             .scaleExtent([1, 8])
-            // what is translate extent??
-            .translateExtent([[-100, -100], [props.width+100, props.height+100]])
-            .extent([[-100, -100], [props.width+100, props.height+100]])
+            // limit dragging to areas with datapoints
+            .translateExtent([[-100, -100], [this.graph_width + 100, this.props.height+100]])
+            .extent([[-100, -100], [this.graph_width + 100, this.props.height + 100]])
             .on("zoom", this.zoomed.bind(this));
 
 
@@ -81,7 +84,13 @@ export class ReturnsChart extends React.Component {
             // if zoom status changed, update paths during render
             (this.state.zoomTransform !== nextState.zoomTransform) ||
             // if we have data but no calculated bars yet, update paths during render
-            (nextProps.data && !this.bars)
+            (nextProps.data && !this.bars) ||
+            //update if we have new data: Note: this is flimsy. if new data has the same final
+            // value, it won't update
+            (this.props.data && nextProps.data && (
+                nextProps.data[nextProps.data.length - 1].value_end !==
+                this.props.data[this.props.data.length - 1].value_end)
+            )
         ){
             this.recalculateD3Paths = true;
         } else {
@@ -120,9 +129,14 @@ export class ReturnsChart extends React.Component {
         // state with the newly calculated bars, triggering an infinite update cycle (each update
         // leads to recalculation of the bars)
 
+        this.graph_width = Math.max(
+            document.getElementById('components_row').clientWidth,
+            document.getElementById('chart_row').clientWidth);
+        console.log("width", this.graph_width);
+
         this.xScale = d3.scaleTime()
             // margin left and right to avoid cutting off axis labels
-            .range([this.margin.left, this.props.width - this.margin.right])
+            .range([this.margin.left, this.graph_width - this.margin.right])
             .domain(d3.extent(this.props.data, d => d.date_start));
 
         this.yScale = d3.scaleLog().base(10)
@@ -153,7 +167,7 @@ export class ReturnsChart extends React.Component {
             .tickFormat(d3.format(',.1f'))
             .ticks(2);
         this.yAxisGridLinesGenerator = d3.axisLeft().scale(this.yScale)
-            .tickSize(-this.props.width + this.margin.left + this.margin.right)
+            .tickSize(-this.graph_width + this.margin.left + this.margin.right)
             .ticks(2)
             .tickFormat('');
     }
@@ -164,7 +178,7 @@ export class ReturnsChart extends React.Component {
         // initialize the bars for the chart
 
         // Step 1: figure out how many months of data to merge into each bar
-        const chart_width = this.props.width - this.margin.left - this.margin.right;
+        const chart_width = this.graph_width - this.margin.left - this.margin.right;
         const data_len = this.props.data.length;
         let number_of_months_to_merge = 1;
         for ( number_of_months_to_merge of [1, 2, 4, 6, 12, 24]){
@@ -185,7 +199,7 @@ export class ReturnsChart extends React.Component {
             const x = this.xScale(start.date_start);
 
             // if bar is outside chart area, skip it
-            if (x < this.margin.left || x > this.props.width - this.margin.right){
+            if (x < this.margin.left || x > this.graph_width - this.margin.right){
                 continue
             }
 
@@ -234,10 +248,12 @@ export class ReturnsChart extends React.Component {
 
             const ttdata = this.state.tooltip_data;
 
+
             return (
                 <>
                     <svg ref={this.graphSVG}
-                        width={this.props.width}
+                        width={this.graph_width}
+                        // width={800}
                         height={this.props.height}
                         onMouseMove={(e) => this.handle_mouseover(e)}
                     >
@@ -279,7 +295,7 @@ export class ReturnsChart extends React.Component {
                             <line
                                 // horizontal line
                                 x1={this.margin.left}
-                                x2={this.props.width - this.margin.right}
+                                x2={this.graph_width - this.margin.right}
                                 // y data + height if loss
                                 y1={ttdata ?
                                     ttdata.y + (ttdata.gained_money ? 0 : ttdata.height) :
@@ -297,7 +313,7 @@ export class ReturnsChart extends React.Component {
                         {/*However, after adding this rect all of the mousemove actions triggered*/}
                         {/*properly w/o having been bound to this rect. Not sure why...*/}
                         <rect id={"chart_mouseover_target"}
-                            width={this.props.width} height={this.props.height}
+                            width={this.graph_width} height={this.props.height}
                             style={{'fill': '#21252900'}}
                         />
                     </svg>

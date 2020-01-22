@@ -279,6 +279,9 @@ TICKER_CONFIG = {
     },
 
     # Alpha Architect
+
+    # this merges the VMOT index backtest from alpha architect with a combo consisting of:
+    # 50% VTI momentum and 50% IEFA momentum and IEF money market w/o taxes
     "VMOT": {
         "name": "Alpha Architect Value Momentum Trend",
         "start_year": 2017,
@@ -321,55 +324,62 @@ TICKER_CONFIG = {
     },
 
     # Treasuries
-    "VGIT": {                                                   # duration: 5.14 years
-        "name": "Intermediate (5-7 year) Treasuries",
+    "VGIT": {
+        "name": "U.S. Treasuries, 5-7 Years",
+        "name_full": 'Vanguard Intermediate-Term Treasury Fund ETF',
         "start_year": 2009,
         "early_replacement": "VFITX",
         "early_monthly_index_replacement": None,
         "suggest_in_search": True,
+        'duration': 5,
         "tax_category": "bonds_treasury"
     },
     "VFITX": {
-        "name": "Intermediate (5-7 year) Treasuries Mutual Fund",  # duration: 5.2 years
+        "name": "Intermediate (5-7 year) Treasuries Mutual Fund",
         "start_year": 1991,
         "early_replacement": "FGOVX",
         "early_monthly_index_replacement": None,
         "suggest_in_search": False,
+        'duration': 5,
         "tax_category": "bonds_treasury"
     },
     "FGOVX": {
-        "name": "Fidelity Goverment Income Fund",                   # duration: 5.5 years
+        "name": "Fidelity Goverment Income Fund",
         "start_year": 1980,
         "early_replacement": None,
         "early_monthly_index_replacement": None,
         "suggest_in_search": False,
+        'duration': 6,
         "tax_category": "bonds_treasury"
     },
 
     "IEF": {
-        "name": "7-10 Year Treasury Bonds",                         # duration 7.4 years
+        "name": "U.S. Treasuries, 7-10 Years",
         "start_year": 2002,
         "early_replacement": "VFITX",
         "early_monthly_index_replacement": None,
         "suggest_in_search": True,
+        'duration': 8,
         "tax_category": "bonds_treasury"
     },
 
     "TLT": {
-        "name": "20+ Year Treasuries",                              # duration: 17 years
+        "name": "2U.S. Treasuries, 20+ Years",
         "name_full": "iShares 20+ Year Treasury Bond ETF",
         "start_year": 2002,
         "early_replacement": "VUSTX",
         "early_monthly_index_replacement": None,
         "suggest_in_search": True,
+        "duration": 17,
         "tax_category": "bonds_treasury"
     },
     "VUSTX": {
-        "name": "Vanguard Long Term Treasury Fund",                 # duration 17 years
+        "name": "Vanguard Long Term Treasury Fund",
         "start_year": 1986,
         "early_replacement": "VWESX",
         "early_monthly_index_replacement": None,
         "suggest_in_search": False,
+        'duration': 17,
         "tax_category": "bonds_treasury"
     },
 
@@ -385,11 +395,13 @@ TICKER_CONFIG = {
 
     # duration: 1.9 years
     "SHY": {
-        "name": "1-3 Year Treasury Bond",
+        "name": "U.S. Treasuries, 1-3 Year",
+        "name_full": 'iShares 1-3 Year Treasur Bond ETF',
         "start_year": 2003,
         "early_replacement": "TWUSX",
         "early_monthly_index_replacement": None,
         "suggest_in_search": True,
+        "duration": 2,
         "tax_category": "bonds_treasury"
     },
     # duration 1.8 years
@@ -401,6 +413,58 @@ TICKER_CONFIG = {
         "suggest_in_search": False,
         "tax_category": "bonds_treasury"
     },
+
+    # Bonds, General
+
+    "BOND": {
+        "name": "PIMCO Active Bond ETF",
+        "start_year": 2012,
+        "early_replacement": "AGG",
+        "early_monthly_index_replacement": None,
+        "suggest_in_search": False,
+        "duration": 5,
+        "tax_category": "bonds_other"
+    },
+    "BND": {
+        "name": "Total U.S. Bond Market",
+        "name_full": "Vanguard Total Bond Market ETF",
+        "start_year": 2007,
+        "early_replacement": "AGG",
+        "early_monthly_index_replacement": None,
+        "suggest_in_search": True,
+        "duration": 6,
+        "tax_category": "bonds_other"
+    },
+    "AGG": {
+        "name": "iShares Core U.S. Aggregate Bond ETF",
+        "start_year": 2003,
+        "early_replacement": "VBFMX",
+        "early_monthly_index_replacement": None,
+        "suggest_in_search": False,
+        "duration": 6,
+        "tax_category": "bonds_other"
+    },
+    "VBMFX": {
+        "name": "Vanguard Total Bond Market Fund",
+        "start_year": 1986,
+        "early_replacement": "USAIX",
+        "early_monthly_index_replacement": None,
+        "suggest_in_search": False,
+        "duration": 6,
+        "tax_category": "bonds_other"
+    },
+
+    # "USAIX": {
+    #     "name": "USAA Income Fund",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": 6,
+    #     "tax_category": "bonds_other"
+    # },
+}
+    # Bonds, US
     #
     # "": {
     #     "name": "",
@@ -408,7 +472,158 @@ TICKER_CONFIG = {
     #     "early_replacement": "",
     #     "early_monthly_index_replacement": None,
     #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
+    #     "tax_category": ""
+    # },
+    #
+    # "": {
+    #     "name": "",
+    #     "start_year": ,
+    #     "early_replacement": "",
+    #     "early_monthly_index_replacement": None,
+    #     "suggest_in_search": False,
+    #     "duration": ,
     #     "tax_category": ""
     # },
 
-}
+# }

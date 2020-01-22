@@ -179,3 +179,5 @@ data/stock_data/
 *.ftr
 *.lprof
 *.prof
+
+temp_data\.json

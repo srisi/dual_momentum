@@ -1,8 +1,8 @@
 import unittest
 import time
 import numpy as np
-from ticker_data import TickerData
-from ticker_config import TICKER_CONFIG
+from dual_momentum.ticker_data import TickerData
+from dual_momentum.ticker_config import TICKER_CONFIG
 from IPython import embed
 
 
@@ -39,12 +39,18 @@ class TestTickerMerge(unittest.TestCase):
         """
 
         first_index = self.new_no_replacement.index[0]
+
         print(first_index)
         for c in ['Close', 'Adj Close']:
 
             # from first shared index on, close and adj close data should be the same
-            self.assertTrue(np.allclose(self.new_no_replacement[c],
-                                        self.new_merged[first_index:][c]))
+            self.assertTrue(np.allclose(self.new_no_replacement[c][:-1],
+                                        self.new_merged[first_index:][c][:-1]))
+
+            # last number should be within 0.1% of each other but not exactly equal as data might
+            # have been updated in the meantime
+            self.assertTrue(abs((self.new_no_replacement[c][-1] / self.new_merged[c][-1]) -1) <
+                            0.001)
 
             # check that shift from old to new ticker does not have any unusual returns
             # i.e. when switching from old to new ticker, the return is less than 3%
@@ -84,7 +90,7 @@ class TestTickerConfig(unittest.TestCase):
                                   ]
             self.assertTrue(ticker_data['early_monthly_index_replacement'] in index_replacements)
 
-            from rates import get_tax_rates_by_category
+            from dual_momentum.rates import get_tax_rates_by_category
             tax_categories = get_tax_rates_by_category(0, 0, 0, 0)
             self.assertTrue(ticker_data['tax_category'] in tax_categories)
 

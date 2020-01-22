@@ -40,13 +40,15 @@ def get_test_data(request):
 
     # tax_config = {'st_gains': 0.35, 'lt_gains': 0.15, 'federal_tax_rate': 0.22,
     #               'state_tax_rate': 0.12}
-    tax_config['st_gains'] = tax_config['short_term_cap_gains_rate']
-    tax_config['lt_gains'] = tax_config['long_term_cap_gains_rate']
+    tax_config['st_gains'] = tax_config['short_term_cap_gains_rate'] / 100
+    tax_config['lt_gains'] = tax_config['long_term_cap_gains_rate'] / 100
 
     tax_config['federal_tax_rate'] = 0.22
     tax_config['state_tax_rate'] = 0.12
 
-    print(tax_config)
+    tax_config = {'st_gains': 0.35, 'lt_gains': 0.15, 'federal_tax_rate': 0.22,
+                  'state_tax_rate': 0.12}
+
 
     parts = []
     for component in components:
@@ -58,6 +60,8 @@ def get_test_data(request):
         component['use_dual_momentum'] = component['dual_momentum']
         parts.append(component)
 
+    print("parts", parts)
+    print(config)
     # print(parts)
 
     dm = DualMomentumComposite(parts=parts,
@@ -111,7 +115,7 @@ def get_test_data(request):
 
     print("dual mom took ", time.time() - start)
 
-    return JsonResponse({'data': dm.get_result_json()})
+    return JsonResponse({'data': dm.get_result_json(), 'config_hash': dm.__hash__()})
 
 
 
