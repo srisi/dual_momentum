@@ -359,10 +359,10 @@ class ComponentSelector extends React.Component {
                                 <span className="input-group-text rem-6">Weight: </span>
                             </div>
                             <input
-                                className={this.props.total_allocated_weight === 100 ?
+                                className={this.props.total_allocated_weight === 1 ?
                                     "form-control" : "form-control is-invalid"}
                                 type="number" name="weight" min="0" max="100"
-                                value={this.props.config.weight}
+                                value={this.props.config.weight * 100}
                                 onChange={(e) => this.props.handle_component_update(e)}
                             />
                             <div className="input-group-append">
@@ -453,7 +453,7 @@ class MainView extends React.Component {
             dm_components: [
                 {
                     'name': 'Equities',
-                    'weight': 50,
+                    'weight': 0.5,
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 2,
@@ -461,7 +461,7 @@ class MainView extends React.Component {
                 },
                 {
                     'name': 'REITs',
-                    'weight': 50,
+                    'weight': 0.5,
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 1,
@@ -534,7 +534,7 @@ class MainView extends React.Component {
             if (event.target.name === 'dual_momentum') {
                 dm_component['dual_momentum'] = !dm_component['dual_momentum']
             } else if (event.target.name === 'weight') {
-                dm_component[event.target.name] = parseFloat(event.target.value);
+                dm_component[event.target.name] = parseFloat(event.target.value) / 100;
                 // dm_components[component_id][event.target.name] = parseFloat(event.target.value);
             } else if (event.target.name === 'lookback' || event.target.name === 'max_holdings') {
                 dm_component[event.target.name] = parseInt(event.target.value);
@@ -610,8 +610,13 @@ class MainView extends React.Component {
     }
 
     async load_result_data() {
-        // const dataset = encodeURIComponent(dataset_name);
-        fetch(`get_test_data`)
+        let url_params = 'conf=%7B%22dm_components%22%3A%5B%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VTI%22%2C%22IEFA%22%2C%22IEMG%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A2%2C%22name%22%3A%22Equities%22%2C%22weight%22%3A0.5%7D%2C%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VNQ%22%2C%22VNQI%22%2C%22IEF%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A1%2C%22name%22%3A%22REITs%22%2C%22weight%22%3A0.5%7D%2C%7B%22name%22%3A%22%22%7D%5D%2C%22dm_config%22%3A%7B%22borrowing_costs_above_libor%22%3A1.5%2C%22costs_per_trade%22%3A0.1%2C%22leverage%22%3A1%2C%22momentum_leverages%22%3A%7B%22config%22%3A%7B%220.8%22%3A-0.3%2C%220.85%22%3A-0.3%2C%220.9%22%3A-0.2%2C%220.95%22%3A-0.2%2C%221.05%22%3A0%2C%221.1%22%3A0%2C%221.15%22%3A0.1%2C%221.2%22%3A0.1%2C%221.3%22%3A0.2%7D%2C%22months_for_leverage%22%3A3%7D%2C%22money_market_holding%22%3A%22VGIT%22%2C%22simulate_taxes%22%3Atrue%2C%22start_year%22%3A1980%2C%22tax_rates%22%3A%7B%22long_term_cap_gains_rate%22%3A20.1%2C%22munis_state_rate%22%3A12.1%2C%22short_term_cap_gains_rate%22%3A34%2C%22treasuries_income_rate%22%3A9.82%7D%7D%7D';
+        let url = 'get_test_data';
+        // url_params = undefined;
+        url += (url_params !== undefined)? ('?' + url_params) : '';
+        console.log("ur", url);
+        console.log(this.state.dm_components[0].weight);
+        fetch(url)
             .then((response) => {
                 response
                     .json()
@@ -693,13 +698,19 @@ class MainView extends React.Component {
     }
 
 
-    update_url(old_stringified_config){
+    update_url_if_no_change_after_2seconds(old_stringified_config){
 
 
         let cur_stringified_config = json_stable_stringify({
             'dm_components':  this.state.dm_components,
             'dm_config': this.state.dm_config
         });
+        if (old_stringified_config === cur_stringified_config) {
+            const url_params = queryString.stringify({'conf': cur_stringified_config});
+            console.log(url_params);
+            window.history.pushState(this.state.dm_config, "",url_params);
+            // this.load_result_data(url_params)
+        }
 
         console.log("same?", old_stringified_config === cur_stringified_config);
     }
@@ -726,7 +737,7 @@ class MainView extends React.Component {
         });
 
         setTimeout(() => {
-            this.update_url(stringified_config)
+            this.update_url_if_no_change_after_2seconds(stringified_config)
         }, 2000);
         console.log("main");
 
