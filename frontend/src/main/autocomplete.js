@@ -3,6 +3,8 @@ import {TextField} from "@material-ui/core";
 import React from "react";
 
 import './autocomplete.css'
+import {ticker_configs} from "./ticker_configs";
+
 
 import PropTypes from 'prop-types';
 
@@ -16,7 +18,7 @@ export class AutoCompleteField extends React.Component {
         this.display_name_to_ticker = {};   // map from displayed name to actual ticker
         this.ticker_to_display_name = {};   // map from ticker to display name
 
-        for (const d of Object.entries(this.props.selection_options)) {
+        for (const d of Object.entries(ticker_configs)) {
             const ticker = d[0];
             const config = d[1];
             if (config.suggest_in_search){
@@ -41,16 +43,27 @@ export class AutoCompleteField extends React.Component {
         });
     }
 
-    sanitize_input_and_handle_update(reason, value){
+    sanitize_input_and_handle_update(reason, value) {
 
-        let ticker = value;
-        if (reason === 'reset'){
-            ticker = this.display_name_to_ticker[value];
-        }
-        // setting a value on init also triggers a reset with undefined value
-        // -> only update if value is not undefined
-        if (ticker !== undefined) {
-            this.props.handle_holding_update(ticker);
+        console.log("sanitize", reason, value);
+
+        // on input, update values
+        if (reason === 'input'){
+            this.props.handle_holding_update(value);
+
+
+        // clear gets triggered when the user clicks the clear button -> empty field
+        } else if (reason === 'clear') {
+            this.props.handle_holding_update('');
+
+        // reset gets triggered on re-renders or when a ticker has been selected from the
+        //dropdown
+        } else if (reason === 'reset') {
+            const ticker = this.display_name_to_ticker[value];
+            if (ticker !== undefined) {
+                console.log("ticker", ticker);
+                this.props.handle_holding_update(ticker);
+            }
         }
     }
 
@@ -88,7 +101,7 @@ export class AutoCompleteField extends React.Component {
                 }
 
                 // clear when user presses Escape
-                clearOnEscape={true}
+                // clearOnEscape={true}
 
                 // what classes to apply to the different html entitites created by
                 // autocomplete (see https://material-ui.com/api/autocomplete/)
@@ -99,6 +112,8 @@ export class AutoCompleteField extends React.Component {
                     popper: "ticker_selector_popper"
                 }}
                 onInputChange={(event, value, reason) => {
+                    console.log(event);
+                    console.log(value, reason);
                     this.sanitize_input_and_handle_update(reason, value);
                 }}
                 renderInput={params => (
@@ -117,12 +132,37 @@ export class AutoCompleteField extends React.Component {
                 //     keepMounted:true
                 // }}
             />
+
+        // <Autocomplete
+        //     id="free-solo-demo"
+        //     freeSolo={true}
+        //     // options={Object.keys(this.state.ticker_configs)}
+        //     options={Object.keys(ticker_configs)}
+        //     // options={this.state.ticker_configs.map(option => option.name)}
+        //     renderInput={params => (
+        //         <TextField {...params}
+        //             placeholder="Type a name here"
+        //             margin="normal"
+        //             variant="outlined" fullWidth
+        //             value={this.state.cur_value}
+        //             onChange={(e) => this.update_searchbar_value(e.target.value)}
+        //         />
+        //     )}
+        //     inputValue={'VTI'}
+        //     autoComplete={true}
+        //     forcePopupIcon={false}
+        //     // onChange={(_event, value) => this.props.update_searchbar_value(value)}
+        //     onInputChange={(_event, value, reason) =>
+        //         // this.autocomplete_change(value, reason)
+        //         console.log(value, reason)
+        //     }
+        // />
+
         )
     }
 }
 AutoCompleteField.propTypes = {
     ticker: PropTypes.string.isRequired,
-    selection_options: PropTypes.object.isRequired,
     handle_holding_update: PropTypes.func.isRequired
 };
 

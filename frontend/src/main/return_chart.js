@@ -132,7 +132,6 @@ export class ReturnsChart extends React.Component {
         this.graph_width = Math.max(
             document.getElementById('components_row').clientWidth,
             document.getElementById('chart_row').clientWidth);
-        console.log("width", this.graph_width);
 
         this.xScale = d3.scaleTime()
             // margin left and right to avoid cutting off axis labels

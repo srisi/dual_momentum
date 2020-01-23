@@ -15,7 +15,6 @@ import equal from "fast-deep-equal/es6/react";
 
 import {ReturnsChart} from "./return_chart";
 import {AutoCompleteField} from "./autocomplete";
-import {ticker_configs} from "./ticker_configs";
 
 
 
@@ -264,9 +263,8 @@ class ComponentSelector extends React.Component {
             for (const [holding_id, ticker] of this.props.config.holdings.entries()) {
                 holding_boxes.push(
                     <AutoCompleteField
-                        key={`${holding_id}_${ticker}`}
+                        key={holding_id}
                         ticker={ticker}
-                        selection_options={ticker_configs}
                         handle_holding_update={(ticker) =>
                             this.props.handle_holding_update(holding_id, ticker)}
                     />
@@ -476,12 +474,12 @@ class MainView extends React.Component {
         this.time_of_last_state_change = Date.now()
     }
 
-    shouldComponentUpdate(nextProps, nextState, nextContext) {
-
-        console.log("shouldUpdate",
-            this.state.dm_components[0].holdings, nextState.dm_components[0].holdings);
-        return true
-    }
+    // shouldComponentUpdate(nextProps, nextState, nextContext) {
+    //
+    //     console.log("shouldUpdate",
+    //         this.state.dm_components[0].holdings, nextState.dm_components[0].holdings);
+    //     return true
+    // }
 
     componentDidMount() {
         this.load_result_data();
@@ -514,7 +512,11 @@ class MainView extends React.Component {
         let dm_components = [... this.state.dm_components];
         let dm_component = {... dm_components[component_id]};
         let holdings = [... dm_components[component_id]['holdings']];
+
+        console.log(holdings);
         holdings[holding_id] = ticker;
+        console.log(holdings);
+
 
         dm_component.holdings = holdings;
         dm_components[component_id] = dm_component;
@@ -614,10 +616,6 @@ class MainView extends React.Component {
             url_params = 'conf=%7B%22dm_components%22%3A%5B%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VTI%22%2C%22IEFA%22%2C%22IEMG%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A2%2C%22name%22%3A%22Equities%22%2C%22weight%22%3A0.5%7D%2C%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VNQ%22%2C%22VNQI%22%2C%22IEF%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A1%2C%22name%22%3A%22REITs%22%2C%22weight%22%3A0.5%7D%2C%7B%22name%22%3A%22%22%7D%5D%2C%22dm_config%22%3A%7B%22borrowing_costs_above_libor%22%3A1.5%2C%22costs_per_trade%22%3A0.1%2C%22leverage%22%3A1%2C%22momentum_leverages%22%3A%7B%22config%22%3A%7B%220.8%22%3A-0.3%2C%220.85%22%3A-0.3%2C%220.9%22%3A-0.2%2C%220.95%22%3A-0.2%2C%221.05%22%3A0%2C%221.1%22%3A0%2C%221.15%22%3A0.1%2C%221.2%22%3A0.1%2C%221.3%22%3A0.2%7D%2C%22months_for_leverage%22%3A3%7D%2C%22money_market_holding%22%3A%22VGIT%22%2C%22simulate_taxes%22%3Atrue%2C%22start_year%22%3A1980%2C%22tax_rates%22%3A%7B%22long_term_cap_gains_rate%22%3A20.1%2C%22munis_state_rate%22%3A12.1%2C%22short_term_cap_gains_rate%22%3A34%2C%22treasuries_income_rate%22%3A9.82%7D%7D%7D';
         }
         let url = 'get_test_data?' + url_params;
-        // url_params = undefined;
-        // url += (url_params !== undefined)? ('?' + url_params) : '';
-        console.log("ur", url);
-        console.log(this.state.dm_components[0].weight);
         fetch(url)
             .then((response) => {
                 response
@@ -713,7 +711,6 @@ class MainView extends React.Component {
             this.load_result_data(url_params)
         }
 
-        console.log("same?", old_stringified_config === cur_stringified_config);
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) {
@@ -724,8 +721,6 @@ class MainView extends React.Component {
             !equal(prevState.dm_components, this.state.dm_components) ||
             !equal(prevState.dm_config, this.state.dm_config)
         );
-
-        console.log("has changed?", dm_config_has_changed);
 
         // if config has changed, wait for 2 seconds.
         // if no further changes are incoming, update the url and the graph
@@ -740,11 +735,6 @@ class MainView extends React.Component {
         }
 
 
-
-
-
-
-        // window.history.pushState(this.state.dm_components);
     }
 }
 
