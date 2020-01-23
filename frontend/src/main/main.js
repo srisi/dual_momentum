@@ -589,7 +589,6 @@ class MainView extends React.Component {
             dm_components[component_id] = dm_component
         //remove holding
         } else {
-            // let holdings = dm_components[component_id]['holdings'];
             if (holdings.length > 0) {
                 // if dual momentum mode, remove last holding
                 if (dm_component['dual_momentum']) {
@@ -598,9 +597,10 @@ class MainView extends React.Component {
                     holdings = [];
                 }
                 dm_component.holdings = holdings;
+
                 dm_components[component_id] = dm_component
 
-                // dm_components[component_id]['holdings'] = holdings;
+                // if none left, remove component
             } else {
                 this.modify_number_of_components(-1, component_id);
                 return

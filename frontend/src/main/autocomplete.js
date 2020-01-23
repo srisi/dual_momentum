@@ -47,7 +47,6 @@ export class AutoCompleteField extends React.Component {
         if (reason === 'reset'){
             ticker = this.display_name_to_ticker[value];
         }
-
         // setting a value on init also triggers a reset with undefined value
         // -> only update if value is not undefined
         if (ticker !== undefined) {
@@ -85,7 +84,7 @@ export class AutoCompleteField extends React.Component {
                 inputValue={
                     (this.props.ticker in this.ticker_to_display_name) ?
                         this.ticker_to_display_name[this.props.ticker] :
-                        ""
+                        this.props.ticker
                 }
 
                 // clear when user presses Escape
@@ -117,32 +116,7 @@ export class AutoCompleteField extends React.Component {
                 // PopperComponent={{
                 //     keepMounted:true
                 // }}
-
             />
-            // <Autocomplete
-            //     id="free-solo-demo"
-            //     freeSolo={true}
-            //     // options={Object.keys(this.state.ticker_configs)}
-            //     options={Object.keys(this.props.selection_options)}
-            //     // options={this.state.ticker_configs.map(option => option.name)}
-            //     renderInput={params => (
-            //         <TextField {...params}
-            //             placeholder="Type a name here"
-            //             margin="normal"
-            //             variant="outlined" fullWidth
-            //             value={this.state.cur_value}
-            //             onChange={(e) => this.update_searchbar_value(e.target.value)}
-            //         />
-            //     )}
-            //     inputValue={'VTI'}
-            //     autoComplete={true}
-            //     forcePopupIcon={false}
-            //     // onChange={(_event, value) => this.props.update_searchbar_value(value)}
-            //     onInputChange={(_event, value, reason) =>
-            //         // this.autocomplete_change(value, reason)
-            //         console.log(value, reason)
-            //     }
-            // />
         )
     }
 }

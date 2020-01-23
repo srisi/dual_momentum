@@ -261,5 +261,5 @@ class TickerData:
 
 
 if __name__ == "__main__":
-    t = TickerData('VTI', force_new_data=False, use_early_replacements=True).data_monthly
-    embed()
+    t = TickerData('GLD', force_new_data=False, use_early_replacements=True).data_monthly
+    print(t)

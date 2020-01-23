@@ -203,8 +203,16 @@ class DualMomentumComposite:
             df_as_dict = df.to_dict('index')
             df_indexes = list(df.index)
 
+
+            try:
+                max_lookback_months = max([c.lookback_months for c in self.components if
+                                           c.use_dual_momentum])
+            # called if only buy and hold components
+            except ValueError:
+                max_lookback_months = 0
+
             for idx, date in enumerate(df_indexes):
-                if idx < max([c.lookback_months for c in self.components if c.use_dual_momentum]):
+                if idx < max_lookback_months:
                     continue
 
                 row = df_as_dict[date]
@@ -324,10 +332,17 @@ class DualMomentumComposite:
 
             self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
 
+            try:
+                max_lookback_months = max([c.lookback_months for c in self.components if
+                                           c.use_dual_momentum])
+            # called if only buy and hold components
+            except ValueError:
+                max_lookback_months = 0
+
             values = []
             for idx, (date, row) in enumerate(self.df.iterrows()):
                 # skip until all dual momentum components have enough lookback data
-                if idx < max([c.lookback_months for c in self.components if c.use_dual_momentum]):
+                if idx < max_lookback_months:
                     continue
                 # skip last row
                 if idx == len(self.df) - 1:

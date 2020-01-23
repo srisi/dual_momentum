@@ -58,7 +58,6 @@ class DualMomentumComponent:
         self.name = name
         self.ticker_list = ticker_list
         self.lookback_months = lookback_months
-        self.max_holdings = max_holdings
         self.start_date = start_date
         self.use_dual_momentum = use_dual_momentum
         self.money_market_holding = money_market_holding
@@ -80,6 +79,11 @@ class DualMomentumComponent:
                 self.ticker_list.append(ticker['ticker'])
             elif isinstance(ticker, str):
                 self.ticker_list.append(ticker)
+
+
+        self.max_holdings = max_holdings
+        if len(self.ticker_list) == 1:
+            self.max_holdings = 1
 
         # tickerdata config
         self.force_new_data = force_new_data
@@ -123,10 +127,9 @@ class DualMomentumComponent:
         :return:
         """
 
-        # if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
-        #     print("using cached dm component data", self.__hash__())
-        #     self.df = pd.read_pickle(self.file_path)
-        if False: pass
+        if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
+            print("using cached dm component data", self.__hash__())
+            self.df = pd.read_pickle(self.file_path)
 
         else:
             # initialize df with tbil rates
