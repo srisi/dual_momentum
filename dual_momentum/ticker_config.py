@@ -28,6 +28,15 @@ TICKER_CONFIG = {
         "tax_category": "equities"
     },
 
+    "TBIL": {
+        "name": "U.S Treasury Bills",
+        "start_year": 1980,
+        "early_replacement": None,
+        "early_monthly_index_replacement": None,
+        "suggest_in_search": True,
+        "tax_category": "bonds_treasury"
+    },
+
     # U.S. Stock Market
     "VTI":  {
         "name": "U.S. Stock Market",

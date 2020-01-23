@@ -55,6 +55,13 @@ class DualMomentumComposite:
             )
             self.components.append(component)
 
+        try:
+            self.max_lookback_months = max([c.lookback_months for c in self.components if
+                                       c.use_dual_momentum])
+        # called if only buy and hold components
+        except ValueError:
+            self.max_lookback_months = 0
+
         # self.parts = parts
         self.money_market_holding = money_market_holding
         self.momentum_leverages = momentum_leverages
@@ -204,15 +211,8 @@ class DualMomentumComposite:
             df_indexes = list(df.index)
 
 
-            try:
-                max_lookback_months = max([c.lookback_months for c in self.components if
-                                           c.use_dual_momentum])
-            # called if only buy and hold components
-            except ValueError:
-                max_lookback_months = 0
-
             for idx, date in enumerate(df_indexes):
-                if idx < max_lookback_months:
+                if idx < self.max_lookback_months:
                     continue
 
                 row = df_as_dict[date]
@@ -289,6 +289,15 @@ class DualMomentumComposite:
                 df_as_dict[date]['cash'] = max(0, percentage_cash)
 
             self.df = pd.DataFrame.from_dict(df_as_dict, orient='index')
+
+
+            self.generate_results_summary()
+
+
+
+
+
+
             self.df.to_pickle(self.file_path)
 
             print(f"running dual momentum on composite took {time.time() - start_time}.")
@@ -296,27 +305,107 @@ class DualMomentumComposite:
         self.simulation_finished = True
         return self.df
 
-    def get_cumulative_performance(self, pre_or_posttax='pretax'):
+    def generate_results_summary(self):
+
+        summary = {}
+
+        self.df['performance_pretax_cumulative'] = np.cumprod(self.df['lev_performance_pretax'])
+        self.df['performance_posttax_cumulative'] = self.df['lev_performance_posttax'] / 10000
+
+        # Get drawdown data
+        pretax_dd_arr, max_dd_pretax, max_dd_date_pretax = self.generate_drawdown_data(self.df[
+                                                                'performance_pretax_cumulative'])
+        self.df['drawdown_pretax'] = pretax_dd_arr
+        summary['max_dd_pretax'] = max_dd_pretax
+        summary['max_dd_date_pretax'] = max_dd_date_pretax
+
+        posttax_dd_arr, max_dd_posttax, max_dd_date_posttax = self.generate_drawdown_data(self.df[
+                                                                'performance_posttax_cumulative'])
+        self.df['drawdown_posttax'] = posttax_dd_arr
+        summary['max_dd_posttax'] = max_dd_posttax
+        summary['max_dd_date_posttax'] = max_dd_date_posttax
+
+        # Get returns and CAGR
+        summary['total_returns_pretax'] = self.df['performance_pretax_cumulative'][-1]
+        summary['total_returns_posttax'] = self.df['performance_posttax_cumulative'][-1]
+
+        summary['cagr_pretax'] = summary['total_returns_pretax'] ** (1.0 / ((len(self.df) - 12)/12))
+        summary['cagr_posttax'] = summary['total_returns_posttax']**(1.0 / ((len(self.df) - 12)/12))
+
+        print(summary)
+
+        tbil_df = load_fred_data('tbil_rate', return_type='df')
+        # self.df = TickerData('ONES').data_monthly
+        # self.df.drop(['Close', 'Adj Close'], inplace=True, axis=1)
+        self.df['tbil_rate'] = tbil_df['index']
+        self.df['tbil_rate'] += 100
+        self.df['tbil_performance_pretax'] = (self.df['tbil_rate'] / 100) ** (1 / 12)
+
+        # we're calculating momentum after taxes, so tbils should be compared on a posttax
+        # basis. I don't have data on tbil cap gains bet it seems reasonable to assume that
+        # they are close to 0.
+        self.df['tbil_performance_posttax'] = 1 + \
+                                              (self.df['tbil_performance_pretax'] - 1) * \
+                                              (1 - self.tax_config['federal_tax_rate'])
+        self.df['risk_free_return'] = self.df['tbil_performance_pretax']
+
+        return_minus_riskfree = (self.df['lev_performance_pretax'] - self.df[
+            'risk_free_return'])[self.max_lookback_months: -1]
+
+        summary['sharpe'] = np.sqrt(12) * return_minus_riskfree.mean() / return_minus_riskfree.std()
+        print(summary)
+
+
+
+
+    @staticmethod
+    def generate_drawdown_data(cumulative_series: pd.Series):
         """
+        Calculate monthly drawdowns in %
 
-        0.003seconds -> not worth profiling
-
-        :param pre_or_posttax:
+        :param cumulative_series:
         :return:
         """
 
-        if not self.simulation_finished:
-            raise ValueError('Can only calculate performance after '
-                             'run_multi_component_dual_momentum')
-        if not 'performance_pretax_cumulative' in self.df:
-            self.df['performance_pretax_cumulative'] = np.cumprod(self.df['lev_performance_pretax'])
-            self.df['performance_posttax_cumulative'] = np.cumprod(
-                self.df['lev_performance_posttax'])
+        perf_arr = np.array(cumulative_series)
+        index_arr = np.array(cumulative_series.index)
+        dd_arr = np.zeros(len(cumulative_series), dtype=float)
+        max_dd = 1.0
+        max_dd_date = None
+        for i in range(1, (len(perf_arr))):
+            max_performance_so_far = np.max(perf_arr[0:i])
 
-        if pre_or_posttax == 'pretax':
-            return self.df['performance_pretax_cumulative']
-        else:
-            return self.df['performance_posttax_cumulative']
+            dd = min(1.0, 1.0 * perf_arr[i] / max_performance_so_far)
+            dd_arr[i] = dd
+            if dd < max_dd:
+                max_dd = dd
+                max_dd_date = index_arr[i]
+
+        return dd_arr, max_dd, max_dd_date
+
+
+
+
+
+    # def get_cumulative_performance(self, pre_or_posttax='pretax'):
+    #     """
+    #
+    #     0.003seconds -> not worth profiling
+    #
+    #     :param pre_or_posttax:
+    #     :return:
+    #     """
+    #
+    #     if not self.simulation_finished:
+    #         raise ValueError('Can only calculate performance after '
+    #                          'run_multi_component_dual_momentum')
+    #     if not 'performance_pretax_cumulative' in self.df:
+    #
+    #
+    #     if pre_or_posttax == 'pretax':
+    #         return self.df['performance_pretax_cumulative']
+    #     else:
+    #         return self.df['performance_posttax_cumulative']
 
     def get_result_json(self):
         """
@@ -328,21 +417,17 @@ class DualMomentumComposite:
 
 
         if self.simulation_finished:
-            self.get_cumulative_performance('pretax')
+
+            calculate_max_drawdown(self.df['lev_performance_posttax'])
 
             self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
 
-            try:
-                max_lookback_months = max([c.lookback_months for c in self.components if
-                                           c.use_dual_momentum])
-            # called if only buy and hold components
-            except ValueError:
-                max_lookback_months = 0
+
 
             values = []
             for idx, (date, row) in enumerate(self.df.iterrows()):
                 # skip until all dual momentum components have enough lookback data
-                if idx < max_lookback_months:
+                if idx < self.max_lookback_months:
                     continue
                 # skip last row
                 if idx == len(self.df) - 1:
@@ -361,23 +446,25 @@ class DualMomentumComposite:
 
 if __name__ == '__main__':
 
-    tax_config = {'st_gains': 0.35, 'lt_gains': 0.15, 'federal_tax_rate': 0.22,
-                  'state_tax_rate': 0.12}
+    tax_config = {'st_gains': 0.7, 'lt_gains': 0.72, 'federal_tax_rate': 0.72,
+                  'state_tax_rate': 0.72}
+    # tax_config = {'st_gains': 0.0, 'lt_gains': 0.0, 'federal_tax_rate': 0.0,
+    #               'state_tax_rate': 0.0}
     money_market_holding = 'VGIT'
     start_date = '1980-01-01'
-    leverage = 2
+    leverage = 1
     borrowing_cost_above_libor = 1.5
     parts = [
         {
             'name': 'equities',
-            'ticker_list': ['VTI', 'IEFA', 'IEMG'],
-            'lookback_months': 12, 'use_dual_momentum': True, 'max_holdings':2, 'weight': 0.5
+            'ticker_list': ['SPY'],
+            'lookback_months': 12, 'use_dual_momentum': False, 'max_holdings':1, 'weight': 1
         },
-        {
-            'name': 'SP500',
-            'ticker_list': ['VNQ', 'VNQI', 'IEF'],
-            'lookback_months': 12, 'use_dual_momentum': True, 'max_holdings': 1, 'weight': 0.5
-        }
+        # {
+        #     'name': 'SP500',
+        #     'ticker_list': ['VNQ', 'VNQI', 'REM'],
+        #     'lookback_months': 12, 'use_dual_momentum': True, 'max_holdings': 1, 'weight': 0.5
+        # }
     ]
 
     momentum_leverages = {

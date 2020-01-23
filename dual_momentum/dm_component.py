@@ -65,12 +65,13 @@ class DualMomentumComponent:
         # optional component, placed here so we don't need both the config and the component
         # in dm_composite
         self.weight = weight
+        self.tax_config = tax_config
 
         self.tax_rates_by_category = get_tax_rates_by_category(st_gains=tax_config['st_gains'],
                 lt_gains=tax_config['lt_gains'], federal_tax_rate=tax_config['federal_tax_rate'],
                 state_tax_rate=tax_config['state_tax_rate'])
         self.tax_rates_by_ticker = get_tax_rates_by_ticker(self.tax_rates_by_category,
-                                                       self.ticker_list + [money_market_holding])
+                                               self.ticker_list + [money_market_holding, 'TBIL'])
 
         # if ticker is a dict like {'ticker': 'VTI', 'tax_category': 'equities'}
         self.ticker_list = []
@@ -103,7 +104,7 @@ class DualMomentumComponent:
         string_to_hash = (f'{self.name}{self.ticker_list}{self.lookback_months}{self.max_holdings}'
                     f'{self.start_date}{self.use_dual_momentum}{self.money_market_holding}'
                     f'{self.force_new_data}{self.use_early_replacements}{self.weight}'
-                    f'{self.day_of_month_for_monthly_data}')
+                    f'{self.day_of_month_for_monthly_data}{self.tax_config}')
         md5 = hashlib.md5(string_to_hash.encode('utf8')).hexdigest()
         return md5
 
@@ -127,10 +128,10 @@ class DualMomentumComponent:
         :return:
         """
 
-        if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
-            print("using cached dm component data", self.__hash__())
-            self.df = pd.read_pickle(self.file_path)
-
+        # if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
+        #     print("using cached dm component data", self.__hash__())
+        #     self.df = pd.read_pickle(self.file_path)
+        if False: pass
         else:
             # initialize df with tbil rates
             tbil_df = load_fred_data('tbil_rate', return_type='df')
@@ -138,7 +139,14 @@ class DualMomentumComponent:
             self.df.drop(['Close', 'Adj Close'], inplace=True, axis=1)
             self.df['tbil_rate'] = tbil_df['index']
             self.df['tbil_rate'] += 100
-            self.df['tbil_performance_1'] = (self.df['tbil_rate'] / 100) ** (1 / 12)
+            self.df['tbil_performance_pretax'] = (self.df['tbil_rate'] / 100) ** (1 / 12)
+
+            # we're calculating momentum after taxes, so tbils should be compared on a posttax
+            # basis. I don't have data on tbil cap gains bet it seems reasonable to assume that
+            # they are close to 0.
+            self.df['tbil_performance_posttax'] = 1 + \
+                (self.df['tbil_performance_pretax'] - 1) * \
+                (1 - self.tax_rates_by_ticker['TBIL']['INCOME'])
             self.df['holding'] = ''
             self.df['cap_gains'] = 0.0
             self.df['div_gains'] = 0.0
@@ -191,16 +199,20 @@ class DualMomentumComponent:
             # figure out current momentum for each ticker
             for ticker in self.ticker_list:
 
-                # figure out if we should use long term (held 1+ year) or short term momentum
-                months_held = self.determine_holding_period(ticker, idx)
-                if months_held >= 12:
-                    ticker_mom = row[f'{ticker}_lt_mom']
-                else:
-                    ticker_mom = row[f'{ticker}_st_mom']
+                # # figure out if we should use long term (held 1+ year) or short term momentum
+                # months_held = self.determine_holding_period(ticker, idx)
+                # if months_held >= 12:
+                #     ticker_mom = row[f'{ticker}_lt_mom']
+                # else:
+                #     ticker_mom = row[f'{ticker}_st_mom']
+
+                ticker_mom = row[f'{ticker}_pretax_mom']
+
 
                 # adjusted for duration, e.g. bonds held for 6 months ->
                 # with 5% tbil rate, would have returned 2.5%
-                if ticker_mom > ((row['tbil_rate'] / 100 - 1) * self.lookback_months / 12 + 1):
+                if ticker_mom > ((row['tbil_performance_pretax'] - 1) *
+                                 self.lookback_months / 12 + 1):
                     momentums[ticker] = ticker_mom
 
             if not self.use_dual_momentum:
@@ -358,6 +370,7 @@ class DualMomentumComponent:
         self.df[f'{ticker}_close'] = new_stock['Close']
         self.df[f'{ticker}_st_mom'] = new_stock['st_mom']
         self.df[f'{ticker}_lt_mom'] = new_stock['lt_mom']
+        self.df[f'{ticker}_pretax_mom'] = new_stock['total_dur']
 
     def determine_holding_period(self, ticker: str, idx : int) -> int:
         """
@@ -420,11 +433,19 @@ class DualMomentumComponent:
     #     return months_held_before
 
 if __name__ == '__main__':
-    ticker_list = ['VTI', 'SPY', 'QQQ']
-    tax_config = {'st_gains': 0.35, 'lt_gains': 0.15, 'federal_tax_rate': 0.22,
-                   'state_tax_rate': 0.12}
+    ticker_list = ['VNQ', 'VNQI', 'IEF']
+    tax_config = {'st_gains': 0.7, 'lt_gains': 0.7, 'federal_tax_rate': 0.7,
+                   'state_tax_rate': 0.7}
+    tax_config = {'st_gains': 0.0, 'lt_gains': 0.00, 'federal_tax_rate': 0.00,
+                   'state_tax_rate': 0.00}
     dmc = DualMomentumComponent(name='equities', ticker_list=ticker_list, lookback_months=12,
                                 max_holdings=2, start_date='1980-01-01', use_dual_momentum=True,
                                 money_market_holding='VGIT', tax_config=tax_config)
 
     dmc.run_dual_momentum()
+
+    dmc.df['performance_pretax_cumulative'] = np.cumprod(dmc.df['performance_pretax'])
+    dmc.df['performance_posttax_cumulative'] = np.cumprod(dmc.df['performance_posttax'])
+
+    print(dmc.df['performance_posttax_cumulative'][-2], dmc.df['performance_pretax_cumulative'][-2])
+
