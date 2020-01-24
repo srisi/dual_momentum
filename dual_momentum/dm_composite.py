@@ -109,21 +109,21 @@ class DualMomentumComposite:
         :return:
         """
 
-        tickers_to_init = ['TLT', 'VUSTX', 'VWESX', 'VGIT']
+        tickers_to_init = {'TLT', 'VUSTX', 'VWESX', 'VGIT'}
 
         for component in self.components:
             for ticker in component.ticker_list:
 
-                tickers_to_init.append(ticker)
+                tickers_to_init.add(ticker)
                 while True:
                     early_replacement = TICKER_CONFIG[ticker]['early_replacement']
                     if not early_replacement:
                         break
                     else:
                         ticker = TICKER_CONFIG[ticker]['early_replacement']
-                        tickers_to_init.append(ticker)
+                        tickers_to_init.add(ticker)
 
-
+        if 'ONES' in tickers_to_init: tickers_to_init.remove('ONES')
         mp_results_queue = multiprocessing.Queue()
         for ticker in tickers_to_init:
             multiprocessing.Process(target=self.preload_data_in_parallel_worker,
@@ -253,10 +253,7 @@ class DualMomentumComposite:
                     # we only pay leverage cost for the percentage of the portfolio that's leveraged
                     leverage_cost = leverage_percentage * monthly_borrowing_rate
 
-                    #DUP
                     df_as_dict[date]['leverage_cost'] = leverage_cost
-                    # df.at[date, 'leverage_cost'] = leverage_cost
-
                     lev_performance_pretax -= leverage_cost
 
                 # taxes_due_total = taxes_month + df.at[df.index[idx - 1], 'taxes_due_total']
@@ -332,28 +329,24 @@ class DualMomentumComposite:
         summary['cagr_pretax'] = summary['total_returns_pretax'] ** (1.0 / ((len(self.df) - 12)/12))
         summary['cagr_posttax'] = summary['total_returns_posttax']**(1.0 / ((len(self.df) - 12)/12))
 
-        print(summary)
-
         tbil_df = load_fred_data('tbil_rate', return_type='df')
-        # self.df = TickerData('ONES').data_monthly
-        # self.df.drop(['Close', 'Adj Close'], inplace=True, axis=1)
-        self.df['tbil_rate'] = tbil_df['index']
-        self.df['tbil_rate'] += 100
-        self.df['tbil_performance_pretax'] = (self.df['tbil_rate'] / 100) ** (1 / 12)
-
-        # we're calculating momentum after taxes, so tbils should be compared on a posttax
-        # basis. I don't have data on tbil cap gains bet it seems reasonable to assume that
-        # they are close to 0.
-        self.df['tbil_performance_posttax'] = 1 + \
-                                              (self.df['tbil_performance_pretax'] - 1) * \
-                                              (1 - self.tax_config['federal_tax_rate'])
-        self.df['risk_free_return'] = self.df['tbil_performance_pretax']
-
+        self.df['tbil_rate'] = tbil_df['index'] + 100
+        self.df['risk_free_return'] = (self.df['tbil_rate'] / 100) ** (1 / 12)
         return_minus_riskfree = (self.df['lev_performance_pretax'] - self.df[
             'risk_free_return'])[self.max_lookback_months: -1]
 
+        # same result as empyrical
+        # (http://quantopian.github.io/empyrical/_modules/empyrical/stats.html)
         summary['sharpe'] = np.sqrt(12) * return_minus_riskfree.mean() / return_minus_riskfree.std()
+        downside_dev = return_minus_riskfree.copy()
+        downside_dev[downside_dev > 0] = 0
+        downside_dev = np.sqrt(np.mean(downside_dev ** 2)) * np.sqrt(12)
+        summary['sortino'] = np.mean(return_minus_riskfree) / downside_dev * 12
+        summary['annual_volatility'] = return_minus_riskfree.std() * (12 ** 0.5)    # alpha = 2
+
         print(summary)
+
+        # volatility = returns.std() * (ann_factor ** (1.0 / alpha))
 
 
 
@@ -418,7 +411,6 @@ class DualMomentumComposite:
 
         if self.simulation_finished:
 
-            calculate_max_drawdown(self.df['lev_performance_posttax'])
 
             self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
 
@@ -457,14 +449,14 @@ if __name__ == '__main__':
     parts = [
         {
             'name': 'equities',
-            'ticker_list': ['SPY'],
-            'lookback_months': 12, 'use_dual_momentum': False, 'max_holdings':1, 'weight': 1
+            'ticker_list': ['VTI', 'QQQ', 'IEMG', 'IEFA'],
+            'lookback_months': 12, 'use_dual_momentum': True, 'max_holdings':2, 'weight': 0.5
         },
-        # {
-        #     'name': 'SP500',
-        #     'ticker_list': ['VNQ', 'VNQI', 'REM'],
-        #     'lookback_months': 12, 'use_dual_momentum': True, 'max_holdings': 1, 'weight': 0.5
-        # }
+        {
+            'name': 'SP500',
+            'ticker_list': ['VNQ', 'VNQI', 'REM'],
+            'lookback_months': 12, 'use_dual_momentum': True, 'max_holdings': 1, 'weight': 0.5
+        }
     ]
 
     momentum_leverages = {
