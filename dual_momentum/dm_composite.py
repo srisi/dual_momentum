@@ -73,6 +73,7 @@ class DualMomentumComposite:
         self.libor = load_fred_data('libor_rate')
 
         self.simulation_finished = False
+        self.summary = None
 
     def __hash__(self) -> str:
         """
@@ -179,8 +180,11 @@ class DualMomentumComposite:
                 df[f'{mm_holding}_performance_posttax'] = component.df['performance_posttax']
                 df[f'{mm_holding}_taxes'] = component.df['taxes']
 
-            for component in self.components:
+            for idx, component in enumerate(self.components):
                 component.run_dual_momentum()
+
+                if idx == 0:
+                    df['tbil_performance_pretax'] = component.df['tbil_performance_pretax']
 
                 df[f'{component.name}_holding'] = component.df['holding']
                 df[f'{component.name}_performance_pretax'] = component.df['performance_pretax']
@@ -189,12 +193,14 @@ class DualMomentumComposite:
 
                 df['performance_pretax'] += component.weight * component.df['performance_pretax']
                 df['taxes'] += component.weight * component.df['taxes']
+                df['cash_portion'] += component.weight * component.df['cash_portion']
+
 
 
             df['leverage'] = 0.0
-            df['cash'] = 0.0
+            # df['cash'] = 0.0
             df['mmh'] = self.money_market_holding
-            df['ret_ann_tbil'] = 0.0
+            # df['ret_ann_tbil'] = 0.0
             df['leverage_costs'] = 0
             df['lev_performance_pretax'] = 1.0
             df['taxes_month'] = 0.0
@@ -202,14 +208,13 @@ class DualMomentumComposite:
             df['taxes_paid'] = 0.0
             df['lev_performance_posttax'] = 10000
             df['lev_dd'] = 0.0
-            df['performance_pretax_min_tbil'] = 1.0
+            # df['performance_pretax_min_tbil'] = 1.0
 
 
             # pandas dataframes are slow with df.iterrows. It's much faster to turn the df into
             # a dict and then pick values from it
             df_as_dict = df.to_dict('index')
             df_indexes = list(df.index)
-
 
             for idx, date in enumerate(df_indexes):
                 if idx < self.max_lookback_months:
@@ -226,6 +231,8 @@ class DualMomentumComposite:
                 # calculate leveraged return and update cash portion accordingly
                 lev_performance_pretax = self.leverage * (row['performance_pretax'] - 1) + 1
                 percentage_cash = 1 - ((1 - row['cash_portion']) * self.leverage)
+                # if row['cash_portion'] > 0:
+                #     embed()
 
                 taxes_month = self.leverage * row['taxes'] * prev_total
 
@@ -283,7 +290,7 @@ class DualMomentumComposite:
                 df_as_dict[date]['taxes_paid'] = taxes_paid
                 df_as_dict[date]['lev_performance_posttax'] = lev_performance_posttax
                 df_as_dict[date]['leverage'] = self.leverage
-                df_as_dict[date]['cash'] = max(0, percentage_cash)
+                df_as_dict[date]['cash_portion'] = max(0, percentage_cash)
 
             self.df = pd.DataFrame.from_dict(df_as_dict, orient='index')
 
@@ -323,17 +330,16 @@ class DualMomentumComposite:
         summary['max_dd_date_posttax'] = max_dd_date_posttax
 
         # Get returns and CAGR
-        summary['total_returns_pretax'] = self.df['performance_pretax_cumulative'][-1]
-        summary['total_returns_posttax'] = self.df['performance_posttax_cumulative'][-1]
+        summary['total_returns_pretax'] = self.df['performance_pretax_cumulative'][-1] - 1
+        summary['total_returns_posttax'] = self.df['performance_posttax_cumulative'][-1] - 1
 
-        summary['cagr_pretax'] = summary['total_returns_pretax'] ** (1.0 / ((len(self.df) - 12)/12))
-        summary['cagr_posttax'] = summary['total_returns_posttax']**(1.0 / ((len(self.df) - 12)/12))
+        summary['cagr_pretax'] = summary['total_returns_pretax'] ** (1.0 / ((len(self.df) -
+                                                                     self.max_lookback_months)/12))
+        summary['cagr_posttax'] = summary['total_returns_posttax']**(1.0 / ((len(self.df) -
+                                                                     self.max_lookback_months)/12))
 
-        tbil_df = load_fred_data('tbil_rate', return_type='df')
-        self.df['tbil_rate'] = tbil_df['index'] + 100
-        self.df['risk_free_return'] = (self.df['tbil_rate'] / 100) ** (1 / 12)
-        return_minus_riskfree = (self.df['lev_performance_pretax'] - self.df[
-            'risk_free_return'])[self.max_lookback_months: -1]
+        return_minus_riskfree = (self.df['lev_performance_pretax'] -
+                                 self.df['tbil_performance_pretax'])[self.max_lookback_months: -1]
 
         # same result as empyrical
         # (http://quantopian.github.io/empyrical/_modules/empyrical/stats.html)
@@ -344,10 +350,66 @@ class DualMomentumComposite:
         summary['sortino'] = np.mean(return_minus_riskfree) / downside_dev * 12
         summary['annual_volatility'] = return_minus_riskfree.std() * (12 ** 0.5)    # alpha = 2
 
-        print(summary)
+        monthly_data = []
 
-        # volatility = returns.std() * (ann_factor ** (1.0 / alpha))
+        self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
+        df_as_dict = self.df.to_dict('index')
+        # df_indexes = list(df.index)
 
+        for idx, date in enumerate(self.df.index):
+            if idx < self.max_lookback_months:
+                continue
+            if idx == len(df_as_dict) - 1:
+                continue
+            row = df_as_dict[date]
+
+
+
+            return_mmh_pretax = round(row[f'{row["mmh"]}_performance_pretax'], 4)
+            return_mmh_posttax = round(row[f'{row["mmh"]}_performance_posttax'], 4)
+            holdings = []
+            for name in [component.name for component in self.components]:
+
+                holding = {'name': name}
+                tickers = row[f'{name}_holding']
+
+                return_tickers_pretax = round(row[f'{name}_performance_pretax'], 4)
+                return_tickers_posttax = round(row[f'{name}_performance_posttax'], 4)
+
+
+                # 100% cash -> only list MMH holding and returns
+                if tickers == ['CASH']:
+                    holding['holdings'] = row['mmh']
+                    holding['pretax'] = return_mmh_pretax
+                    holding['posttax'] = return_mmh_posttax
+
+                # 50% cash -> returns 50% from tickers and 50% from mmh
+                elif len(tickers) == 2 and tickers[1] == 'CASH':
+                    holding['holdings'] = tickers
+                    holding['pretax'] = return_tickers_pretax / 2 + return_mmh_pretax / 2
+                    holding['posttax'] = return_tickers_posttax / 2 + return_mmh_posttax / 2
+
+                else:
+                    holding['holdings'] = tickers
+                    holding['pretax'] = return_tickers_pretax
+                    holding['posttax'] = return_tickers_posttax
+
+                holdings.append(holding)
+
+
+            #                 'value_start': row['prev_total'],
+            #                 'value_end': row['performance_pretax_cumulative']
+
+            monthly_data.append({
+                'date': date,
+                'holdings': holdings,
+                'value_start': row['prev_total'],
+                'value_end': row['performance_pretax_cumulative']
+            })
+
+        summary['monthly_data'] = monthly_data
+
+        self.summary = summary
 
 
 
@@ -376,64 +438,41 @@ class DualMomentumComposite:
 
         return dd_arr, max_dd, max_dd_date
 
-
-
-
-
-    # def get_cumulative_performance(self, pre_or_posttax='pretax'):
+    #
+    # def get_result_json(self):
     #     """
-    #
-    #     0.003seconds -> not worth profiling
-    #
-    #     :param pre_or_posttax:
+    #     Profiling: same issue (iterrows, row) as main dual momentum
     #     :return:
     #     """
     #
-    #     if not self.simulation_finished:
-    #         raise ValueError('Can only calculate performance after '
-    #                          'run_multi_component_dual_momentum')
-    #     if not 'performance_pretax_cumulative' in self.df:
+    #     import json
     #
     #
-    #     if pre_or_posttax == 'pretax':
-    #         return self.df['performance_pretax_cumulative']
+    #     if self.simulation_finished:
+    #
+    #
+    #         self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
+    #
+    #
+    #
+    #         values = []
+    #         for idx, (date, row) in enumerate(self.df.iterrows()):
+    #             # skip until all dual momentum components have enough lookback data
+    #             if idx < self.max_lookback_months:
+    #                 continue
+    #             # skip last row
+    #             if idx == len(self.df) - 1:
+    #                 continue
+    #
+    #             values.append({
+    #                 'date': date,
+    #                 'value_start': row['prev_total'],
+    #                 'value_end': row['performance_pretax_cumulative']
+    #             })
+    #         return values
+    #
     #     else:
-    #         return self.df['performance_posttax_cumulative']
-
-    def get_result_json(self):
-        """
-        Profiling: same issue (iterrows, row) as main dual momentum
-        :return:
-        """
-
-        import json
-
-
-        if self.simulation_finished:
-
-
-            self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
-
-
-
-            values = []
-            for idx, (date, row) in enumerate(self.df.iterrows()):
-                # skip until all dual momentum components have enough lookback data
-                if idx < self.max_lookback_months:
-                    continue
-                # skip last row
-                if idx == len(self.df) - 1:
-                    continue
-
-                values.append({
-                    'date': date,
-                    'value_start': row['prev_total'],
-                    'value_end': row['performance_pretax_cumulative']
-                })
-            return values
-
-        else:
-            raise ValueError("run_multi_component_dual_momentum() before get_result_json().")
+    #         raise ValueError("run_multi_component_dual_momentum() before get_result_json().")
 
 
 if __name__ == '__main__':

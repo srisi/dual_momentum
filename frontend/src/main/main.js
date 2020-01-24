@@ -421,6 +421,8 @@ class MainView extends React.Component {
             ticker_configs: null,
             dm_config: {
 
+                'data_load_error': undefined,
+                'config_hash': undefined,
                 'costs_per_trade': 0.1,
                 'start_year': 1980,
 
@@ -621,13 +623,18 @@ class MainView extends React.Component {
                 response
                     .json()
                     .then((d) => {
-                        let data = d.data;
-                        data.forEach(element => {
+                        d.data.monthly_data.forEach(element => {
                             element.date_str = element.date;
                             element.date_start = new Date(element.date[0], element.date[1]);
                             element.date_end = new Date(element.date[0], element.date[1] + 1);
                         });
-                        this.setState({data:data, ticker_configs: d.ticker_configs});
+                        let dm_config = this.state.dm_config;
+                        dm_config.config_hash = d.config_hash;
+                        dm_config.data_load_error = d.data_load_error;
+                        this.setState({
+                            data : d.data,
+                            dm_config: dm_config
+                        });
                         return true
                     })
             }).catch(() => {
@@ -673,6 +680,9 @@ class MainView extends React.Component {
             )
         }
 
+        console.log("s", this.state);
+        console.log("err", this.state.dm_config.data_load_error);
+
         return (
             <div className="container">
                 <MainInterface
@@ -688,6 +698,8 @@ class MainView extends React.Component {
                     <div id={"chart_container"}>
                         <ReturnsChart
                             data={this.state.data}
+                            data_load_error={this.state.dm_config.data_load_error}
+                            config_hash={this.state.dm_config.config_hash}
                             width={800}
                             height={600}
                         />

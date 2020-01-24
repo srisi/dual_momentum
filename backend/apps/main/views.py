@@ -71,6 +71,17 @@ def get_test_data(request):
                                start_date=f'{config["start_year"]}-01-01',
                                leverage=config['leverage'],
                                borrowing_cost_above_libor=config['borrowing_costs_above_libor'])
+    try:
+        dm.run_multi_component_dual_momentum()
+        data = dm.summary
+        error = None
+    except Exception as e:
+        error = e
+        data = {}
+
+    print("dual mom took ", time.time() - start)
+
+    return JsonResponse({'data': data, 'config_hash': dm.__hash__(), 'data_load_error': error})
 
     # with open('temp_data.json', 'r') as infile:
     #     data =  json.load(infile)
@@ -111,11 +122,7 @@ def get_test_data(request):
     #                            start_date=start_date,
     #                            leverage=leverage,
     #                            borrowing_cost_above_libor=borrowing_cost_above_libor)
-    dm.run_multi_component_dual_momentum()
 
-    print("dual mom took ", time.time() - start)
-
-    return JsonResponse({'data': dm.get_result_json(), 'config_hash': dm.__hash__()})
 
 
 

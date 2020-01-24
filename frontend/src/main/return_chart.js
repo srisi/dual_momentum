@@ -19,6 +19,7 @@ export class ReturnsChart extends React.Component {
             zoomTransform: null,
         };
 
+
         // the main graph SVG
         this.graphSVG = React.createRef();
         this.graph_width = 800;
@@ -85,12 +86,8 @@ export class ReturnsChart extends React.Component {
             (this.state.zoomTransform !== nextState.zoomTransform) ||
             // if we have data but no calculated bars yet, update paths during render
             (nextProps.data && !this.bars) ||
-            //update if we have new data: Note: this is flimsy. if new data has the same final
-            // value, it won't update
-            (this.props.data && nextProps.data && (
-                nextProps.data[nextProps.data.length - 1].value_end !==
-                this.props.data[this.props.data.length - 1].value_end)
-            )
+            // if the dual momentum config has changed (indicated by hash) -> update
+            (this.props.config_hash === nextProps.config_hash)
         ){
             this.recalculateD3Paths = true;
         } else {
@@ -136,13 +133,13 @@ export class ReturnsChart extends React.Component {
         this.xScale = d3.scaleTime()
             // margin left and right to avoid cutting off axis labels
             .range([this.margin.left, this.graph_width - this.margin.right])
-            .domain(d3.extent(this.props.data, d => d.date_start));
+            .domain(d3.extent(this.props.data.monthly_data, d => d.date_start));
 
         this.yScale = d3.scaleLog().base(10)
             .range([this.props.height - this.margin.top, this.margin.bottom])
             .domain([
-                0.5 * d3.min(this.props.data, d => d.value_start),
-                1.5 * d3.max(this.props.data, d => d.value_end)]);
+                0.5 * d3.min(this.props.data.monthly_data, d => d.value_start),
+                1.5 * d3.max(this.props.data.monthly_data, d => d.value_end)]);
 
         // update x and y scale with zoom/drag information
         if (this.state.zoomTransform){
@@ -178,7 +175,7 @@ export class ReturnsChart extends React.Component {
 
         // Step 1: figure out how many months of data to merge into each bar
         const chart_width = this.graph_width - this.margin.left - this.margin.right;
-        const data_len = this.props.data.length;
+        const data_len = this.props.data.monthly_data.length;
         let number_of_months_to_merge = 1;
         for ( number_of_months_to_merge of [1, 2, 4, 6, 12, 24]){
             this.bar_width = chart_width / data_len * number_of_months_to_merge;
@@ -194,7 +191,7 @@ export class ReturnsChart extends React.Component {
         // Step 2: generate bars
         this.bars = [];
         for (let index = 0; index < data_len; index += number_of_months_to_merge){
-            const start = this.props.data[index];
+            const start = this.props.data.monthly_data[index];
             const x = this.xScale(start.date_start);
 
             // if bar is outside chart area, skip it
@@ -203,7 +200,7 @@ export class ReturnsChart extends React.Component {
             }
 
             // make sure to limit last value to an existing index
-            const end = this.props.data[Math.min(
+            const end = this.props.data.monthly_data[Math.min(
                 index + number_of_months_to_merge - 1, data_len - 1)];
             let y1 = this.yScale(Math.max(start.value_start, end.value_end));
             let y2 = this.yScale(Math.min(start.value_start, end.value_end));
@@ -357,7 +354,9 @@ export class ReturnsChart extends React.Component {
 }
 
 ReturnsChart.propTypes={
-    data: PropTypes.array,
+    data: PropTypes.object,
+    data_load_error: PropTypes.str,
+    config_hash: PropTypes.str,
     width: PropTypes.number.isRequired,
     height: PropTypes.number.isRequired
 };
