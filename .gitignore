@@ -181,3 +181,6 @@ data/stock_data/
 *.prof
 
 temp_data\.json
+
+
+assets/bundles/
