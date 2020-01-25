@@ -4,8 +4,6 @@ Views that define API endpoints for the site
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
-from .serializers import PersonSerializer
-from .models import load_json_data
 from django.http import JsonResponse, HttpResponse
 
 from dual_momentum.ticker_config import TICKER_CONFIG
