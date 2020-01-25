@@ -7,9 +7,16 @@ import PropTypes from 'prop-types';
 
 import queryString from 'query-string';
 
+// why does the commented out import not work?
+import * as json_stable_stringify from 'json-stable-stringify';
+// import {json_stable_stringify} from 'json-stable-stringify';
+
+import equal from "fast-deep-equal/es6/react";
+
 import {ReturnsChart} from "./return_chart";
 import {AutoCompleteField} from "./autocomplete";
-import {ticker_configs} from "./ticker_configs";
+
+
 
 import { getCookie } from '../common'
 import './main.css';
@@ -24,8 +31,6 @@ class MainInterface extends React.Component {
         const leverage = this.props.config.leverage;
         const borrowing_costs = this.props.config.borrowing_costs_above_libor;
         const start_year = this.props.config.start_year;
-
-        console.log((borrowing_costs >= 0.00 &&   borrowing_costs < 100));
 
         let borrowing_costs_selector = null;
         if (leverage > 1) {
@@ -153,15 +158,23 @@ MainInterface.propTypes={
 
 class TaxConfig extends React.Component{
     constructor(props){
-        super(props)
+        super(props);
+
+        this.config_to_name = {
+            'short_term_cap_gains_rate': 'Short Term Cap Gains',
+            'long_term_cap_gains_rate': 'Long Term Cap Gains',
+            'munis_state_rate': 'Muni Bonds Income',
+            'treasuries_income_rate': 'Treasuries Income',
+            'gld_lt_rate': 'Gold LT Capital Gains',
+        }
     }
 
     render() {
         if (this.props.config.simulate_taxes){
             let selectors = [];
             for (const [tax_type, _i] of Object.entries(this.props.config.tax_rates)){
-                const tax_name = this.props.config.tax_rates[tax_type]['name'];
-                const tax_rate = this.props.config.tax_rates[tax_type]['rate'];
+                const tax_name = this.config_to_name[tax_type];
+                const tax_rate = this.props.config.tax_rates[tax_type];
                 const rate_valid = (tax_rate >= 0 && tax_rate <= 100);
                 selectors.push(
 
@@ -171,11 +184,12 @@ class TaxConfig extends React.Component{
                                 <span className="input-group-text tax_type_name">{tax_name}</span>
                             </div>
                             <input
-                                className={"form-control rem-5 " + ((tax_rate >= 0 && tax_rate <= 100) ? "" : "is-invalid")}
+                                className={"form-control rem-5 " +
+                                    ((tax_rate >= 0 && tax_rate <= 100) ? "" : "is-invalid")}
                                 type="number" name={tax_type} min="0" max="100"
                                 value={tax_rate}
-                                onChange={(e) => this.props.handle_tax_rate_update(tax_type,
-                                    e.target.value)}
+                                onChange={(e) =>
+                                    this.props.handle_tax_rate_update(tax_type, e.target.value)}
                             />
                             <div className="input-group-append">
                                 <span className="input-group-text">%</span>
@@ -246,14 +260,13 @@ class ComponentSelector extends React.Component {
         // filled component
         } else {
             let holding_boxes = [];
-            for (const [_i, holding] of this.props.config.holdings.entries()) {
+            for (const [holding_id, ticker] of this.props.config.holdings.entries()) {
                 holding_boxes.push(
-                    <HoldingBox
-                        key={holding.id}
-                        holding={holding}
+                    <AutoCompleteField
+                        key={holding_id}
+                        ticker={ticker}
                         handle_holding_update={(ticker) =>
-                            this.props.handle_holding_update(holding.id, ticker)
-                        }
+                            this.props.handle_holding_update(holding_id, ticker)}
                     />
                 );
             }
@@ -305,7 +318,8 @@ class ComponentSelector extends React.Component {
                                 !this.props.config.dual_momentum) ? "" : " is-invalid")}
                             disabled={!this.props.config.dual_momentum}
                             type="number" name="max_holdings" min="1" max="2"
-                            value={this.props.config.dual_momentum ? this.props.config.max_holdings : ""}
+                            value={this.props.config.dual_momentum ?
+                                this.props.config.max_holdings : ""}
                             onChange={(e) => this.props.handle_component_update(e)}
                         />
                         <div className="invalid-feedback">
@@ -324,7 +338,7 @@ class ComponentSelector extends React.Component {
                                 "form-control" : "form-control is-invalid"}
                             disabled={!this.props.config.dual_momentum}
                             type="number" name="lookback" min="1" max="24"
-                            value={this.props.config.dual_momentum ? this.props.config.lookback : ""}
+                            value={this.props.config.dual_momentum ? this.props.config.lookback :""}
                             onChange={(e) => this.props.handle_component_update(e)}
                         />
                         <div className="input-group-append">
@@ -343,10 +357,10 @@ class ComponentSelector extends React.Component {
                                 <span className="input-group-text rem-6">Weight: </span>
                             </div>
                             <input
-                                className={this.props.total_allocated_weight === 100 ?
+                                className={this.props.total_allocated_weight === 1 ?
                                     "form-control" : "form-control is-invalid"}
                                 type="number" name="weight" min="0" max="100"
-                                value={this.props.config.weight}
+                                value={this.props.config.weight * 100}
                                 onChange={(e) => this.props.handle_component_update(e)}
                             />
                             <div className="input-group-append">
@@ -375,11 +389,11 @@ class ComponentSelector extends React.Component {
 
                     {/*Add / Remove ticker buttons*/}
                     {(this.props.config.dual_momentum || this.props.config.holdings.length === 0) ?
-                        <button type="button" className="btn btn-outline-primary"
+                        <button type="button" className="btn btn-sm btn-outline-primary"
                             onClick={() => this.props.modify_number_of_holdings(1)}
                         >Add Ticker</button> : null
                     }
-                    <button type="button" className="btn btn-outline-primary button_remove"
+                    <button type="button" className="btn btn-sm btn-outline-primary button_remove"
                         onClick={() => this.props.modify_number_of_holdings(-1)}
                     >Remove {this.props.config.holdings.length > 0 ? 'Ticker' : 'Part'}</button>
                 </div>
@@ -395,39 +409,6 @@ ComponentSelector.propTypes={
     modify_number_of_holdings: PropTypes.func.isRequired
 };
 
-class HoldingBox extends React.Component {
-    // the box for one single holding
-
-    constructor(props){
-        super(props);
-    }
-
-    render(){
-        // let input =
-        //     <div className="input-group input-group-sm mb-1">
-        //         <div className="input-group-prepend">
-        //             <span className="input-group-text rem-6">Ticker {this.props.holding.id + 1}: </span>
-        //         </div>
-        //         <input className="form-control input_ticker"
-        //             type="text" name="ticker" maxLength="20" size="20"
-        //             value={this.props.holding.ticker}
-        //             onChange={(e) => this.props.handle_holding_update(e)}
-        //         />
-        //     </div>;
-        return (
-            <AutoCompleteField
-                ticker={this.props.holding.ticker}
-                selection_options={ticker_configs}
-                handle_holding_update={(ticker) => this.props.handle_holding_update(ticker)}
-            />
-        )
-    }
-}
-HoldingBox.propTypes={
-    holding: PropTypes.object.isRequired,
-    handle_holding_update: PropTypes.func.isRequired
-};
-
 
 /***************************************************************************************************
  * Main component for the main view.
@@ -440,6 +421,8 @@ class MainView extends React.Component {
             ticker_configs: null,
             dm_config: {
 
+                'data_load_error': undefined,
+                'config_hash': undefined,
                 'costs_per_trade': 0.1,
                 'start_year': 1980,
 
@@ -448,10 +431,14 @@ class MainView extends React.Component {
 
                 'simulate_taxes': true,
                 'tax_rates': {
-                    'short_term_cap_gains_rate': {'name': 'Short Term Cap Gains', 'rate':34},
-                    'long_term_cap_gains_rate': {'name': 'Long Term Cap Gains', 'rate': 20.1},
-                    'munis_state_rate': {'name': 'Muni Bonds Income ', 'rate': 12.1},
-                    'treasuries_income_rate': {'name': 'Treasuries Income ', 'rate': 9.82},
+                    'short_term_cap_gains_rate': 34,
+                    'long_term_cap_gains_rate':  20.1,
+                    'munis_state_rate':          12.1,
+                    'treasuries_income_rate':     9.82,
+                    // 'short_term_cap_gains_rate': {'name': 'Short Term Cap Gains', 'rate':34},
+                    // 'long_term_cap_gains_rate': {'name': 'Long Term Cap Gains', 'rate': 20.1},
+                    // 'munis_state_rate': {'name': 'Muni Bonds Income ', 'rate': 12.1},
+                    // 'treasuries_income_rate': {'name': 'Treasuries Income ', 'rate': 9.82},
                     // 'gld_lt_rate': {'name': 'Gold LT Capital Gains', 'rate': 20.1},
                 },
                 'money_market_holding': 'VGIT',
@@ -466,29 +453,19 @@ class MainView extends React.Component {
             dm_components: [
                 {
                     'name': 'Equities',
-                    'weight': 50,
+                    'weight': 0.5,
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 2,
-                    'holdings': [
-                        {'id': 0, 'ticker': 'VTI'},
-                        {'id': 1, 'ticker': 'IEFA'},
-                        {'id': 2, 'ticker': 'IEMG'},
-                        {'id': 3, 'ticker': ''}
-                    ]
+                    'holdings': ['VTI', 'IEFA', 'IEMG', ''],
                 },
                 {
                     'name': 'REITs',
-                    'weight': 50,
+                    'weight': 0.5,
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 1,
-                    'holdings': [
-                        {'id': 0, 'ticker': 'VNQ'},
-                        {'id': 1, 'ticker': 'VNQI'},
-                        {'id': 2, 'ticker': 'REM'},
-                        {'id': 3, 'ticker': ''}
-                    ]
+                    'holdings': ['VNQ', 'VNQI', 'IEF', '']
                 },
                 {
                     'name': '',
@@ -496,37 +473,56 @@ class MainView extends React.Component {
             ]
         };
         this.csrftoken = getCookie('csrftoken');
+        this.time_of_last_state_change = Date.now()
     }
+
+    // shouldComponentUpdate(nextProps, nextState, nextContext) {
+    //
+    //     console.log("shouldUpdate",
+    //         this.state.dm_components[0].holdings, nextState.dm_components[0].holdings);
+    //     return true
+    // }
 
     componentDidMount() {
         this.load_result_data();
     }
 
     handle_config_update(event){
-        let config = this.state.dm_config;
-        const ename = event.target.name;
-        if (ename === 'simulate_taxes') {
-            config['simulate_taxes'] = !config['simulate_taxes']
-        } else if (ename === 'start_year'){
-            config[ename] = parseInt(event.target.value);
-        } else if (ename === 'borrowing_costs_above_libor' || ename === 'leverage'){
-            config[ename] = parseFloat(event.target.value);
-        }
 
-        this.setState({config : config})
+        let dm_config = {... this.state.dm_config};
+        const ename = event.target.name;
+
+        if (ename === 'simulate_taxes') {
+            dm_config['simulate_taxes'] = !dm_config['simulate_taxes']
+        } else if (ename === 'start_year'){
+            dm_config[ename] = parseInt(event.target.value);
+        } else if (ename === 'borrowing_costs_above_libor' || ename === 'leverage'){
+            dm_config[ename] = parseFloat(event.target.value);
+        }
+        this.setState({dm_config})
     }
 
     handle_tax_rate_update(tax_type, rate) {
-        let config = this.state.dm_config;
-        config.tax_rates[tax_type].rate = parseFloat(rate);
-        this.setState({config: config});
-        console.log(this.state);
+        let dm_config = {... this.state.dm_config};
+        let tax_rates = {... dm_config.tax_rates};
+        tax_rates[tax_type] = parseFloat(rate);
+        dm_config.tax_rates = tax_rates;
+        this.setState({dm_config});
     }
 
     handle_holding_update(component_id, holding_id, ticker){
-        let dm_components = this.state.dm_components;
-        dm_components[component_id]['holdings'][holding_id]['ticker'] = ticker;
-        this.setState({dm_components: dm_components});
+        let dm_components = [... this.state.dm_components];
+        let dm_component = {... dm_components[component_id]};
+        let holdings = [... dm_components[component_id]['holdings']];
+
+        console.log(holdings);
+        holdings[holding_id] = ticker;
+        console.log(holdings);
+
+
+        dm_component.holdings = holdings;
+        dm_components[component_id] = dm_component;
+        this.setState({dm_components});
     }
 
     handle_component_update(component_id, event){
@@ -536,99 +532,109 @@ class MainView extends React.Component {
             this.modify_number_of_components(1, null);
         } else {
 
-            let dm_components = this.state.dm_components;
-            let dm_component = this.state.dm_components[component_id];
+            let dm_components = [... this.state.dm_components];
+            let dm_component = {... dm_components[component_id]};
 
             if (event.target.name === 'dual_momentum') {
                 dm_component['dual_momentum'] = !dm_component['dual_momentum']
             } else if (event.target.name === 'weight') {
-                dm_components[component_id][event.target.name] = parseFloat(event.target.value);
+                dm_component[event.target.name] = parseFloat(event.target.value) / 100;
+                // dm_components[component_id][event.target.name] = parseFloat(event.target.value);
             } else if (event.target.name === 'lookback' || event.target.name === 'max_holdings') {
-                dm_components[component_id][event.target.name] = parseInt(event.target.value);
+                dm_component[event.target.name] = parseInt(event.target.value);
+                // dm_components[component_id][event.target.name] = parseInt(event.target.value);
             } else if (event.target.name === 'name') {
-                dm_components[component_id][event.target.name] = event.target.value;
+                dm_component[event.target.name] = event.target.value;
+                // dm_components[component_id][event.target.name] = event.target.value;
             }
-            this.setState({dm_components: dm_components});
+            dm_components[component_id] = dm_component;
+            this.setState({dm_components});
         }
     }
 
 
     modify_number_of_components(i, component_id){
         // Add or remove components
-
-        console.log("change components", i);
-        let dm_components = this.state.dm_components;
+        let dm_components = [... this.state.dm_components];
 
         // add new component
         if (i === 1) {
-            dm_components[dm_components.length - 1] = {
-                // 'id': dm_components.length,
+            let dm_component = {... dm_components[dm_components.length - 1]};
+            dm_component = {
                 'name': dm_components[dm_components.length -1].name,
                 'weight': 0,
                 'dual_momentum': true,
                 'lookback': 12,
                 'max_holdings': 1,
-                'holdings': [
-                    {'id': 0, 'ticker': ''}
-                ]
+                'holdings': ['']
             };
             // add new empty component at the end
+            dm_components[dm_components.length - 1] = dm_component;
             dm_components.push({'name': ''})
 
         // remove component
         } else {
-            console.log(component_id, dm_components.slice(0, component_id), dm_components.slice(component_id +1));
-            dm_components = dm_components.slice(0, component_id).concat(dm_components.slice(component_id +1));
+            dm_components = dm_components.slice(
+                0, component_id).concat(dm_components.slice(component_id +1));
         }
 
         this.setState({dm_components: dm_components});
     }
 
     modify_number_of_holdings(i, component_id) {
-        let dm_components = this.state.dm_components;
+        let dm_components = [... this.state.dm_components];
+        let dm_component = {... dm_components[component_id]};
+        let holdings = [... dm_component.holdings];
 
         // add new holding
         if (i === 1) {
-            dm_components[component_id]['holdings'].push({
-                'id': dm_components[component_id]['holdings'].length,
-                'ticker': '', 'percentage': 0
-            });
+            holdings.push('');
+            dm_component.holdings = holdings;
+            dm_components[component_id] = dm_component
         //remove holding
         } else {
-            let holdings = dm_components[component_id]['holdings'];
             if (holdings.length > 0) {
-
                 // if dual momentum mode, remove last holding
-                if (dm_components[component_id]['dual_momentum']) {
+                if (dm_component['dual_momentum']) {
                     holdings = holdings.slice(0, -1);
                 } else { // if buy and hold, remove the only remaining holding
                     holdings = [];
                 }
-                dm_components[component_id]['holdings'] = holdings;
+                dm_component.holdings = holdings;
+
+                dm_components[component_id] = dm_component
+
+                // if none left, remove component
             } else {
                 this.modify_number_of_components(-1, component_id);
                 return
             }
         }
-        this.setState({dm_components: dm_components});
+        this.setState({dm_components});
     }
 
-    async load_result_data() {
-        // const dataset = encodeURIComponent(dataset_name);
-        fetch(`get_test_data`)
+    async load_result_data(url_params) {
+        if (url_params === undefined){
+            url_params = 'conf=%7B%22dm_components%22%3A%5B%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VTI%22%2C%22IEFA%22%2C%22IEMG%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A2%2C%22name%22%3A%22Equities%22%2C%22weight%22%3A0.5%7D%2C%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VNQ%22%2C%22VNQI%22%2C%22IEF%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A1%2C%22name%22%3A%22REITs%22%2C%22weight%22%3A0.5%7D%2C%7B%22name%22%3A%22%22%7D%5D%2C%22dm_config%22%3A%7B%22borrowing_costs_above_libor%22%3A1.5%2C%22costs_per_trade%22%3A0.1%2C%22leverage%22%3A1%2C%22momentum_leverages%22%3A%7B%22config%22%3A%7B%220.8%22%3A-0.3%2C%220.85%22%3A-0.3%2C%220.9%22%3A-0.2%2C%220.95%22%3A-0.2%2C%221.05%22%3A0%2C%221.1%22%3A0%2C%221.15%22%3A0.1%2C%221.2%22%3A0.1%2C%221.3%22%3A0.2%7D%2C%22months_for_leverage%22%3A3%7D%2C%22money_market_holding%22%3A%22VGIT%22%2C%22simulate_taxes%22%3Atrue%2C%22start_year%22%3A1980%2C%22tax_rates%22%3A%7B%22long_term_cap_gains_rate%22%3A20.1%2C%22munis_state_rate%22%3A12.1%2C%22short_term_cap_gains_rate%22%3A34%2C%22treasuries_income_rate%22%3A9.82%7D%7D%7D';
+        }
+        let url = 'get_test_data?' + url_params;
+        fetch(url)
             .then((response) => {
                 response
                     .json()
                     .then((d) => {
-                        let data = d.data;
-                        data.forEach(element => {
+                        d.data.monthly_data.forEach(element => {
                             element.date_str = element.date;
                             element.date_start = new Date(element.date[0], element.date[1]);
                             element.date_end = new Date(element.date[0], element.date[1] + 1);
                         });
-                        console.log(d.ticker_configs);
-
-                        this.setState({data:data, ticker_configs: d.ticker_configs});
+                        let dm_config = this.state.dm_config;
+                        dm_config.config_hash = d.config_hash;
+                        dm_config.data_load_error = d.data_load_error;
+                        this.setState({
+                            data : d.data,
+                            dm_config: dm_config
+                        });
                         return true
                     })
             }).catch(() => {
@@ -645,6 +651,7 @@ class MainView extends React.Component {
 
         // get total weight allocated (should be 100)
         let total_allocated_weight = 0;
+
         for (const [_i, component] of this.state.dm_components.entries()) {
             if (!isNaN(component.weight)) {
                 total_allocated_weight += component.weight;
@@ -652,11 +659,13 @@ class MainView extends React.Component {
         }
 
         let dm_components = [];
+
+
         for (const [component_id, _d] of this.state.dm_components.entries()) {
             dm_components.push(
                 <ComponentSelector
                     key={component_id}
-                    config={this.state.dm_components[component_id]}
+                    config={{... this.state.dm_components[component_id]}}
                     total_allocated_weight={total_allocated_weight}
                     handle_holding_update={(holding_id, ticker) => {
                         this.handle_holding_update(component_id, holding_id, ticker)
@@ -671,22 +680,28 @@ class MainView extends React.Component {
             )
         }
 
+        console.log("s", this.state);
+        console.log("err", this.state.dm_config.data_load_error);
+
         return (
             <div className="container">
                 <MainInterface
-                    config={this.state.dm_config}
+                    config={{... this.state.dm_config}}
                     handle_config_update={(e) => this.handle_config_update(e)}
-                    handle_tax_rate_update={(tax_type, rate) => this.handle_tax_rate_update(tax_type, rate)}
+                    handle_tax_rate_update={(tax_type, rate) =>
+                        this.handle_tax_rate_update(tax_type, rate)}
                 />
-                <div className="row">
+                <div className="row" id="components_row">
                     {dm_components}
                 </div>
-                <div className={"row"}>
+                <div className={"row"} id={"chart_row"}>
                     <div id={"chart_container"}>
                         <ReturnsChart
                             data={this.state.data}
+                            data_load_error={this.state.dm_config.data_load_error}
+                            config_hash={this.state.dm_config.config_hash}
                             width={800}
-                            height={400}
+                            height={600}
                         />
                     </div>
                 </div>
@@ -694,14 +709,44 @@ class MainView extends React.Component {
         );
     }
 
-    componentDidUpdate(prevProps, prevState, snapshot) {
-        console.log("updated", this.state);
-        console.log("dm", this.state.dm_components[0]);
-        const qs = queryString.stringify(this.state.dm_components[0]);
-        console.log(qs);
-        console.log(queryString.parse(qs));
 
-        // window.history.pushState(this.state.dm_components);
+    update_url_if_no_change_after_2seconds(old_stringified_config){
+
+
+        let cur_stringified_config = json_stable_stringify({
+            'dm_components':  this.state.dm_components,
+            'dm_config': this.state.dm_config
+        });
+        if (old_stringified_config === cur_stringified_config) {
+            const url_params = queryString.stringify({'conf': cur_stringified_config});
+            window.history.pushState(this.state.dm_config, "",url_params);
+            this.load_result_data(url_params)
+        }
+
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot) {
+
+
+        // config has changed if either dm_components or dm_config has change
+        const dm_config_has_changed = (
+            !equal(prevState.dm_components, this.state.dm_components) ||
+            !equal(prevState.dm_config, this.state.dm_config)
+        );
+
+        // if config has changed, wait for 2 seconds.
+        // if no further changes are incoming, update the url and the graph
+        if (dm_config_has_changed){
+            const stringified_config = json_stable_stringify({
+                'dm_components':  this.state.dm_components,
+                'dm_config': this.state.dm_config
+            });
+            setTimeout(() => {
+                this.update_url_if_no_change_after_2seconds(stringified_config)
+            }, 2000);
+        }
+
+
     }
 }
 

@@ -11,6 +11,9 @@ def get_tax_rates_by_category(st_gains: float, lt_gains: float, federal_tax_rate
                   state_tax_rate: float):
     """
     Loads tax rates by investment category
+
+    Income: Dividends and monthly bond payments
+
     :return: dict
     """
     collectibles_lt = 0.28
