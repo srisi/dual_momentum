@@ -110,7 +110,7 @@ class DualMomentumComposite:
         :return:
         """
 
-        tickers_to_init = {'TLT', 'VUSTX', 'VWESX', 'VGIT'}
+        tickers_to_init = {'TLT', 'VUSTX', 'VWESX', 'VGIT', 'VFITX', 'FGOVX', 'SPY', 'VFINX'}
 
         for component in self.components:
             for ticker in component.ticker_list:
@@ -147,7 +147,6 @@ class DualMomentumComposite:
         t.load_raw_data_or_get_from_yahoo()
         mp_results_queue.put(True)
 
-
     def run_multi_component_dual_momentum(self):
 
         self.preload_data_in_parallel()
@@ -168,17 +167,17 @@ class DualMomentumComposite:
             df['taxes'] = 0.0
 
             # each money market holding works like a buy and hold component
-            for mm_holding in ['TLT', 'VGIT']:
+            for mm_holding in ['TLT', 'VGIT', 'SPY']:
                 component = DualMomentumComponent(
-                    name=mm_holding, ticker_list=[mm_holding], tax_config=self.tax_config,
+                    name=f'__{mm_holding}', ticker_list=[mm_holding], tax_config=self.tax_config,
                     lookback_months=12, max_holdings=1, use_dual_momentum=False, start_date=self.start_date,
                     money_market_holding=mm_holding, force_new_data=self.force_new_data
                 )
                 component.run_dual_momentum()
 
-                df[f'{mm_holding}_performance_pretax'] = component.df['performance_pretax']
-                df[f'{mm_holding}_performance_posttax'] = component.df['performance_posttax']
-                df[f'{mm_holding}_taxes'] = component.df['taxes']
+                df[f'__{mm_holding}_performance_pretax'] = component.df['performance_pretax']
+                df[f'__{mm_holding}_performance_posttax'] = component.df['performance_posttax']
+                df[f'__{mm_holding}_taxes'] = component.df['taxes']
 
             for idx, component in enumerate(self.components):
                 component.run_dual_momentum()
@@ -241,9 +240,9 @@ class DualMomentumComposite:
                     #TODO: implement other money market holding options
                     if self.money_market_holding in ['SHY', 'VGIT', 'IEF', 'TLT', 'BOND', 'BND',
                                                      'ONES']:
-                        mm_pretax = row[f'{self.money_market_holding}_performance_pretax'] - 1
+                        mm_pretax = row[f'__{self.money_market_holding}_performance_pretax'] - 1
                         lev_performance_pretax += percentage_cash * mm_pretax
-                        taxes_month += row[f'{self.money_market_holding}_taxes'] * \
+                        taxes_month += row[f'__{self.money_market_holding}_taxes'] * \
                                        percentage_cash * prev_total
                         df.at[date, 'mmh'] = self.money_market_holding
 
@@ -350,6 +349,15 @@ class DualMomentumComposite:
         summary['sortino'] = np.mean(return_minus_riskfree) / downside_dev * 12
         summary['annual_volatility'] = return_minus_riskfree.std() * (12 ** 0.5)    # alpha = 2
 
+
+        # get correlations
+        columns = [f'{component.name}_performance_pretax' for component in self.components]
+        columns += [f'__{self.money_market_holding}_performance_pretax']
+        columns += ['__SPY_performance_pretax']
+        columns += ['lev_performance_pretax']
+        cors = self.df[columns].corr()
+
+
         monthly_data = []
 
         self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
@@ -363,10 +371,8 @@ class DualMomentumComposite:
                 continue
             row = df_as_dict[date]
 
-
-
-            return_mmh_pretax = round(row[f'{row["mmh"]}_performance_pretax'], 4)
-            return_mmh_posttax = round(row[f'{row["mmh"]}_performance_posttax'], 4)
+            return_mmh_pretax = round(row[f'__{row["mmh"]}_performance_pretax'], 4)
+            return_mmh_posttax = round(row[f'__{row["mmh"]}_performance_posttax'], 4)
             holdings = []
             for name in [component.name for component in self.components]:
 
@@ -515,7 +521,6 @@ if __name__ == '__main__':
                                force_new_data=False)
 
     dm.run_multi_component_dual_momentum()
-    dm.get_result_json()
     print(time.time() - s )
 
 

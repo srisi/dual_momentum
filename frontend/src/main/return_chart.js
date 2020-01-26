@@ -69,6 +69,7 @@ export class ReturnsChart extends React.Component {
             .on("zoom", this.zoomed.bind(this));
 
 
+        console.log("Height", this.props.height, window.innerHeight);
     }
     zoomed() {
         this.setState({

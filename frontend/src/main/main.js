@@ -35,7 +35,7 @@ class MainInterface extends React.Component {
         let borrowing_costs_selector = null;
         if (leverage > 1) {
             borrowing_costs_selector = [
-                <div key="borrow" className="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                <div key="borrow" className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                     <div className="input-group input-group-sm mb-1">
                         <div className="input-group-prepend">
                             <span className="input-group-text tax_type_name">
@@ -73,7 +73,7 @@ class MainInterface extends React.Component {
                 <div className="row">
 
                     {/*Start Year Selector*/}
-                    <div className="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                    <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                         <div className="input-group input-group-sm mb-1">
                             <div className="input-group-prepend">
                                 <span className="input-group-text">Start Year </span>
@@ -92,7 +92,7 @@ class MainInterface extends React.Component {
                     </div>
 
                     {/*Leverage Selector*/}
-                    <div className="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                    <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                         <div className="input-group input-group-sm mb-1">
                             <div className="input-group-prepend">
                                 <span className="input-group-text">Leverage </span>
@@ -115,7 +115,7 @@ class MainInterface extends React.Component {
                     {borrowing_costs_selector}
 
                     {/*Taxes Selector*/}
-                    <div className="col-xl-3 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                    <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                         <div className={"btn-group btn-group-sm btn-group-toggle mb-1 " +
                             "dual_mom_buttons input-group input-group-sm"} data-toggle="buttons">
                             <div className="input-group-prepend">
@@ -178,7 +178,7 @@ class TaxConfig extends React.Component{
                 const rate_valid = (tax_rate >= 0 && tax_rate <= 100);
                 selectors.push(
 
-                    <div key={tax_type} className="col-xl-3 col-lg-4 col-md-6 col-sm-12 col-xs-12">
+                    <div key={tax_type} className="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-xs-12">
                         <div className="tax_rate_selector input-group input-group-sm">
                             <div className="input-group-prepend">
                                 <span className="input-group-text tax_type_name">{tax_name}</span>
@@ -233,7 +233,7 @@ class ComponentSelector extends React.Component {
         // Empty component Shell
         if (is_empty_component) {
             return (
-                <div className="col-xl-3 col-lg-4 col-md-4 col-sm-6 col-xs-12 mt-4">
+                <div className="col-xl4 col-lg-4 col-md-4 col-sm-6 col-xs-12">
                     {/*Title / Name*/}
                     <input className="component_title form-control component_title_new"
                         type="text" name="name" maxLength="14" size="14" disabled
@@ -277,7 +277,7 @@ class ComponentSelector extends React.Component {
             }
 
             return (
-                <div className="col-xl-3 col-lg-4 col-md-4 col-sm-6 col-xs-12 mt-4">
+                <div className="col-xl-4 col-lg-3 col-md-2 col-sm-6 col-xs-12 pb-2">
 
                     {/*Title / Name*/}
                     <input className="component_title form-control"
@@ -684,27 +684,43 @@ class MainView extends React.Component {
         console.log("err", this.state.dm_config.data_load_error);
 
         return (
-            <div className="container">
-                <MainInterface
-                    config={{... this.state.dm_config}}
-                    handle_config_update={(e) => this.handle_config_update(e)}
-                    handle_tax_rate_update={(tax_type, rate) =>
-                        this.handle_tax_rate_update(tax_type, rate)}
-                />
-                <div className="row" id="components_row">
-                    {dm_components}
-                </div>
-                <div className={"row"} id={"chart_row"}>
-                    <div id={"chart_container"}>
-                        <ReturnsChart
-                            data={this.state.data}
-                            data_load_error={this.state.dm_config.data_load_error}
-                            config_hash={this.state.dm_config.config_hash}
-                            width={800}
-                            height={600}
+            <div className="container-fluid">
+                <div className={"row"} id={"config_and_chart_row"}>
+
+                    <div className={"col-xl-6"}>
+
+                        <MainInterface
+                            config={{... this.state.dm_config}}
+                            handle_config_update={(e) => this.handle_config_update(e)}
+                            handle_tax_rate_update={(tax_type, rate) =>
+                                this.handle_tax_rate_update(tax_type, rate)}
                         />
+
+
+                        <div className="row mt-4" id="components_row">
+                            <div id={"components_header"}>
+                                <span>COMPONENTS</span>
+                            </div>
+                            <div className={"row"} id={"components_content"}>
+                                {dm_components}
+                            </div>
+                        </div>
+                    </div>
+                    <div className={"col-xl-6"}>
+                        <div className={"row"} id={"chart_row"}>
+                            <div id={"chart_container"}>
+                                <ReturnsChart
+                                    data={this.state.data}
+                                    data_load_error={this.state.dm_config.data_load_error}
+                                    config_hash={this.state.dm_config.config_hash}
+                                    width={800}
+                                    height={Math.max(400, window.innerHeight / 3)}
+                                />
+                            </div>
+                        </div>
                     </div>
                 </div>
+
             </div>
         );
     }

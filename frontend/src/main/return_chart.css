@@ -1,3 +1,11 @@
+/*#chart_container{*/
+/*    margin-left: -50px;*/
+/*}*/
+
+.row[min-width~="1200px"] #chart_container {
+    margin-left: -50px;
+}
+
 .grid line {
     stroke: #ddd;
 }

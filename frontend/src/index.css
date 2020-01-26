@@ -51,11 +51,14 @@ label {
 
     border: none;
     padding-left: 0;
+
+    background: #f3f3f3 !important;
+
 }
 
-.component_title_new{
-    background-color: white !important;
-}
+/*.component_title_new{*/
+/*    background-color: white !important;*/
+/*}*/
 
 .dual_mom_buttons{
     width: 100%;
@@ -98,6 +101,9 @@ label {
 }
 
 
+.width-95{
+    width: 95%;
+}
 
 
 
