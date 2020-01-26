@@ -19,6 +19,10 @@
 }
 
 .chart_tooltip{
-    position: relative;
     opacity: 0.8;
+    background: #f3f3f3;
+
+    position: absolute;
+    top: 70px;
+    left: 80px;
 }
