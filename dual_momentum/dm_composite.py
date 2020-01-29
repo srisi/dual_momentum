@@ -315,6 +315,11 @@ class DualMomentumComposite:
         self.df['performance_pretax_cumulative'] = np.cumprod(self.df['lev_performance_pretax'])
         self.df['performance_posttax_cumulative'] = self.df['lev_performance_posttax'] / 10000
 
+        self.df['performance_sp500_pretax_cumulative'] = np.cumprod(self.df[
+                                                                       '__SPY_performance_pretax'])
+        self.df['performance_sp500_posttax_cumulative'] = self.df['__SPY_performance_posttax'] / \
+                                                          10000
+
         # Get drawdown data
         pretax_dd_arr, max_dd_pretax, max_dd_date_pretax = self.generate_drawdown_data(self.df[
                                                                 'performance_pretax_cumulative'])
@@ -373,6 +378,7 @@ class DualMomentumComposite:
 
             return_mmh_pretax = round(row[f'__{row["mmh"]}_performance_pretax'], 4)
             return_mmh_posttax = round(row[f'__{row["mmh"]}_performance_posttax'], 4)
+
             holdings = []
             for name in [component.name for component in self.components]:
 
@@ -410,7 +416,9 @@ class DualMomentumComposite:
                 'date': date,
                 'holdings': holdings,
                 'value_start': row['prev_total'],
-                'value_end': row['performance_pretax_cumulative']
+                'value_end': row['performance_pretax_cumulative'],
+                'value_end_spy_pretax': round(row['performance_sp500_pretax_cumulative'], 4),
+                'value_end_spy_posttax': round(row['performance_sp500_posttax_cumulative'], 4)
             })
 
         summary['monthly_data'] = monthly_data

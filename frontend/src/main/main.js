@@ -645,11 +645,10 @@ class MainView extends React.Component {
             'dm_config': this.state.dm_config
         });
         if (url_params === undefined){
-            const url_params = queryString.stringify({'conf': cur_stringified_config});
+            url_params = queryString.stringify({'conf': cur_stringified_config});
             window.history.pushState(this.state.dm_config, "",url_params);
-            this.load_result_data(url_params)
-            //            url_params =
-            //            'conf=%7B"dm_components"%3A%5B%7B"dual_momentum"%3Atrue%2C"holdings"%3A%5B"VTI"%2C"IEFA"%2C"IEMG"%2C""%5D%2C"lookback"%3A12%2C"max_holdings"%3A2%2C"name"%3A"Equities"%2C"weight"%3A0.5%7D%2C%7B"dual_momentum"%3Atrue%2C"holdings"%3A%5B"VNQ"%2C"VNQI"%2C"REM"%2C""%5D%2C"lookback"%3A12%2C"max_holdings"%3A1%2C"name"%3A"REITs"%2C"weight"%3A0.5%7D%2C%7B"dual_momentum"%3Atrue%2C"holdings"%3A%5B"BND"%2C"BNDX"%2C"HYD"%2C"VTEB"%2C"HYG"%2C"LQD"%2C"TIP"%2C"MBB"%5D%2C"lookback"%3A12%2C"max_holdings"%3A1%2C"name"%3A"Bonds"%2C"weight"%3A0%7D%2C%7B"dual_momentum"%3Atrue%2C"holdings"%3A%5B"TLT"%2C"GLD"%5D%2C"lookback"%3A12%2C"max_holdings"%3A1%2C"name"%3A"Saftey"%2C"weight"%3A0%7D%2C%7B"name"%3A""%7D%5D%2C"dm_config"%3A%7B"borrowing_costs_above_libor"%3A1.5%2C"config_hash"%3A"856030dcc747bc78ddf836ab0a3b07a0"%2C"costs_per_trade"%3A0.1%2C"data_load_error"%3Anull%2C"leverage"%3A1%2C"momentum_leverages"%3A%7B"config"%3A%7B"0.8"%3A-0.3%2C"0.85"%3A-0.3%2C"0.9"%3A-0.2%2C"0.95"%3A-0.2%2C"1.05"%3A0%2C"1.1"%3A0%2C"1.15"%3A0.1%2C"1.2"%3A0.1%2C"1.3"%3A0.2%7D%2C"months_for_leverage"%3A3%7D%2C"money_market_holding"%3A"VGIT"%2C"simulate_taxes"%3Afalse%2C"start_year"%3A1980%2C"tax_rates"%3A%7B"long_term_cap_gains_rate"%3A20.1%2C"munis_state_rate"%3A12.1%2C"short_term_cap_gains_rate"%3A34%2C"treasuries_income_rate"%3A9.82%7D%7D%7D';
+            this.load_result_data(url_params);
+            return
         }
         let url = 'get_test_data?' + url_params;
         fetch(url)
@@ -679,8 +678,6 @@ class MainView extends React.Component {
     }
 
 
-
-
     render() {
 
         // get total weight allocated (should be 100)
@@ -693,8 +690,6 @@ class MainView extends React.Component {
         }
 
         let dm_components = [];
-
-        console.log("cm", this.state.dm_components);
         for (const [component_id, _d] of this.state.dm_components.entries()) {
             dm_components.push(
                 <ComponentSelector
@@ -712,15 +707,12 @@ class MainView extends React.Component {
                     }}
                 />
             );
-            if(this.state.dm_components.length === 5 && component_id === 1){
-                dm_components.push(
-                    <div className="w-100"/>
-                )
-            }
+            // if(this.state.dm_components.length === 5 && component_id === 1){
+            //     dm_components.push(
+            //         <div className="w-100"/>
+            //     )
+            // }
         }
-
-        console.log("s", this.state);
-        console.log("err", this.state.dm_config.data_load_error);
 
         return (
             <div className="container-fluid">

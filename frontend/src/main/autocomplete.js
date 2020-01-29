@@ -45,8 +45,6 @@ export class AutoCompleteField extends React.Component {
 
     sanitize_input_and_handle_update(reason, value) {
 
-        console.log("sanitize", reason, value);
-
         // on input, update values
         if (reason === 'input'){
             this.props.handle_holding_update(value);
@@ -112,8 +110,6 @@ export class AutoCompleteField extends React.Component {
                     popper: "ticker_selector_popper"
                 }}
                 onInputChange={(event, value, reason) => {
-                    console.log(event);
-                    console.log(value, reason);
                     this.sanitize_input_and_handle_update(reason, value);
                 }}
                 renderInput={params => (
