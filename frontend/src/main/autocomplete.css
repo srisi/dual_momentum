@@ -63,12 +63,13 @@
 /*Move clear button all the way to the right*/
 .MuiAutocomplete-inputRoot[class*="MuiFilledInput-root"] .MuiAutocomplete-endAdornment{
     right: 2px !important;
+    top: -2px;
 }
 
 .MuiAutocomplete-clearIndicator{
     /*visibility: visible !important;*/
-    margin-top: 2px !important;
-    padding: 2px !important;
+    margin-top: 3px !important;
+    padding: 1px !important;
 }
 
 .input_duration{
