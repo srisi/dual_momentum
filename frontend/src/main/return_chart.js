@@ -118,7 +118,7 @@ export class ReturnsChart extends React.Component {
                 month.x = this.xScale(month.date_end);
                 month.x = Math.max(month.x, this.margin.left);
                 month.x = Math.min(month.x, this.graph_width - this.margin.left);
-                month.y = this.yScale(month.value_end);
+                month.y = this.yScale(month.value_end_posttax);
                 month.y = Math.min(month.y, this.props.height - this.margin.top);
                 month.y = Math.max(month.y, this.margin.top);
 
@@ -155,8 +155,8 @@ export class ReturnsChart extends React.Component {
         this.yScale = d3.scaleLog().base(10)
             .range([this.props.height - this.margin.top, this.margin.bottom])
             .domain([
-                0.5 * d3.min(this.props.data.monthly_data, d => d.value_start),
-                1.5 * d3.max(this.props.data.monthly_data, d => d.value_end)]);
+                0.5 * d3.min(this.props.data.monthly_data, d => d.value_start_posttax),
+                1.5 * d3.max(this.props.data.monthly_data, d => d.value_end_posttax)]);
 
         // update x and y scale with zoom/drag information
         if (this.state.zoomTransform){
@@ -165,8 +165,8 @@ export class ReturnsChart extends React.Component {
         }
 
         // get line generators for returns and benchmark
-        this.returns_line_generator = this.get_line_generator('value_end');
-        this.sp500_line_generator = this.get_line_generator('value_end_spy_pretax');
+        this.returns_line_generator = this.get_line_generator('value_end_posttax');
+        this.sp500_line_generator = this.get_line_generator('value_end_spy_posttax');
 
         this.xAxisGenerator = d3.axisBottom().scale(this.xScale)
             .tickFormat(d3.timeFormat('%Y'));
@@ -359,13 +359,13 @@ class ChartTickerTooltips extends React.Component{
                     <div id={"strategy_box"} className={"ticker_box"}>
                         <div>Strategy</div>
                         <div className={"ticker_box_value_div"}>
-                            {(this.props.data.value_end * 100).toFixed(0) + "%"}
+                            {(this.props.data.value_end_posttax * 100).toFixed(0) + "%"}
                         </div>
                     </div>
                     <div id={"benchmark_box"} className={"ticker_box"}>
                         <div>S&P 500</div>
                         <div className={"ticker_box_value_div"}>
-                            {(this.props.data.value_end_spy_pretax * 100).toFixed(0) + "%"}
+                            {(this.props.data.value_end_spy_posttax * 100).toFixed(0) + "%"}
                         </div>
                     </div>
                 </div>
@@ -397,7 +397,7 @@ class ChartTooltip extends React.Component{
             // date_month_to_last.setMonth(data.date_end.getMonth() - 1);
             // const date_end = date_month_to_last
             //     .toLocaleDateString('en-US', {month: 'long', year:'numeric'});
-            const pl_percent = (((data.value_end / data.value_start) - 1) * 100).toFixed(3) +"%";
+            const pl_percent = (((data.value_end_posttax / data.value_start_posttax) - 1) * 100).toFixed(3) +"%";
 
             let holdings = [];
             for (const holding of this.props.tooltip_data.holdings){
@@ -405,7 +405,7 @@ class ChartTooltip extends React.Component{
                     <tr key={holding.name}>
                         <td>{holding.holdings}</td>
                         <td className={"returns_col"}>
-                            {((holding.pretax - 1) * 100).toFixed(3) + "%"}
+                            {((holding.posttax - 1) * 100).toFixed(3) + "%"}
                         </td>
                     </tr>)
             }

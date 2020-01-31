@@ -317,8 +317,9 @@ class DualMomentumComposite:
 
         self.df['performance_sp500_pretax_cumulative'] = np.cumprod(self.df[
                                                                        '__SPY_performance_pretax'])
-        self.df['performance_sp500_posttax_cumulative'] = self.df['__SPY_performance_posttax'] / \
-                                                          10000
+        self.df['performance_sp500_posttax_cumulative'] = np.cumprod(self.df[
+                                                                    '__SPY_performance_posttax'])
+
 
         # Get drawdown data
         pretax_dd_arr, max_dd_pretax, max_dd_date_pretax = self.generate_drawdown_data(self.df[
@@ -365,7 +366,8 @@ class DualMomentumComposite:
 
         monthly_data = []
 
-        self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
+        self.df['prev_total_pretax'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
+        self.df['prev_total_posttax'] = self.df.performance_posttax_cumulative.shift(1).fillna(1)
         df_as_dict = self.df.to_dict('index')
         # df_indexes = list(df.index)
 
@@ -415,8 +417,10 @@ class DualMomentumComposite:
             monthly_data.append({
                 'date': date,
                 'holdings': holdings,
-                'value_start': row['prev_total'],
-                'value_end': row['performance_pretax_cumulative'],
+                'value_start_pretax': row['prev_total_pretax'],
+                'value_start_posttax': row['prev_total_posttax'],
+                'value_end_pretax': row['performance_pretax_cumulative'],
+                'value_end_posttax': row['performance_posttax_cumulative'],
                 'value_end_spy_pretax': round(row['performance_sp500_pretax_cumulative'], 4),
                 'value_end_spy_posttax': round(row['performance_sp500_posttax_cumulative'], 4)
             })
@@ -490,9 +494,10 @@ class DualMomentumComposite:
 
 
 if __name__ == '__main__':
-
-    tax_config = {'st_gains': 0.7, 'lt_gains': 0.72, 'federal_tax_rate': 0.72,
-                  'state_tax_rate': 0.72}
+    # fed_st_gains: float, fed_lt_gains: float, state_st_gains: float,
+    # state_lt_gains: float):
+    tax_config = {'fed_st_gains': 0.22, 'fed_lt_gains': 0.15, 'state_st_gains': 0.12,
+                  'state_lt_gains': 0.051}
     # tax_config = {'st_gains': 0.0, 'lt_gains': 0.0, 'federal_tax_rate': 0.0,
     #               'state_tax_rate': 0.0}
     money_market_holding = 'VGIT'

@@ -29,23 +29,21 @@ def get_test_data(request):
 
     if config['simulate_taxes']:
         tax_config = config['tax_rates']
-    else:
-        tax_config = {
-            'long_term_cap_gains_rate': 0,
-            'munis_state_rate': 0,
-            'short_term_cap_gains_rate': 0,
-            'treasuries_income_rate': 0}
+        for key, val in tax_config.items():
+            tax_config[key] = val / 100
 
+    else:
+        tax_config = {'fed_st_gains': 0.0, 'fed_lt_gains': 0.0, 'state_st_gains': 0.0,
+                      'state_lt_gains': 0.0}
+
+    # tax_config['st_gains'] = tax_config['short_term_cap_gains_rate'] / 100
+    # tax_config['lt_gains'] = tax_config['long_term_cap_gains_rate'] / 100
+    #
+    # tax_config['federal_tax_rate'] = 0.22
+    # tax_config['state_tax_rate'] = 0.12
+    #
     # tax_config = {'st_gains': 0.35, 'lt_gains': 0.15, 'federal_tax_rate': 0.22,
     #               'state_tax_rate': 0.12}
-    tax_config['st_gains'] = tax_config['short_term_cap_gains_rate'] / 100
-    tax_config['lt_gains'] = tax_config['long_term_cap_gains_rate'] / 100
-
-    tax_config['federal_tax_rate'] = 0.22
-    tax_config['state_tax_rate'] = 0.12
-
-    tax_config = {'st_gains': 0.35, 'lt_gains': 0.15, 'federal_tax_rate': 0.22,
-                  'state_tax_rate': 0.12}
 
 
     parts = []

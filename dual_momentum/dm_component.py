@@ -67,9 +67,13 @@ class DualMomentumComponent:
         self.weight = weight
         self.tax_config = tax_config
 
-        self.tax_rates_by_category = get_tax_rates_by_category(st_gains=tax_config['st_gains'],
-                lt_gains=tax_config['lt_gains'], federal_tax_rate=tax_config['federal_tax_rate'],
-                state_tax_rate=tax_config['state_tax_rate'])
+        self.tax_rates_by_category = get_tax_rates_by_category(
+            fed_st_gains=tax_config['fed_st_gains'], fed_lt_gains=tax_config['fed_lt_gains'],
+            state_st_gains=tax_config['state_st_gains'], state_lt_gains=tax_config[
+                'state_lt_gains'])
+            # st_gains=tax_config['st_gains'],
+            #     lt_gains=tax_config['lt_gains'], federal_tax_rate=tax_config['federal_tax_rate'],
+            #     state_tax_rate=tax_config['state_tax_rate'])
         self.tax_rates_by_ticker = get_tax_rates_by_ticker(self.tax_rates_by_category,
                                                self.ticker_list + [money_market_holding, 'TBIL'])
 

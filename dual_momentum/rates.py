@@ -7,8 +7,10 @@ from pathlib import Path
 import pickle
 
 
-def get_tax_rates_by_category(st_gains: float, lt_gains: float, federal_tax_rate: float,
-                  state_tax_rate: float):
+# def get_tax_rates_by_category(st_gains: float, lt_gains: float, federal_tax_rate: float,
+#                   state_tax_rate: float):
+def get_tax_rates_by_category(fed_st_gains: float, fed_lt_gains: float, state_st_gains: float,
+                              state_lt_gains: float):
     """
     Loads tax rates by investment category
 
@@ -16,20 +18,35 @@ def get_tax_rates_by_category(st_gains: float, lt_gains: float, federal_tax_rate
 
     :return: dict
     """
+
+
     collectibles_lt = 0.28
-    if collectibles_lt > st_gains:
-        collectibles_lt = st_gains
+    if collectibles_lt > fed_st_gains:
+        collectibles_lt = fed_st_gains
+
+    st_gains = state_st_gains + fed_st_gains
+    lt_gains = state_lt_gains + fed_lt_gains
 
     return {
         'equities': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains,   'INCOME': lt_gains},
         'reits': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains,   'INCOME': st_gains},
-        'bonds_treasury': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': federal_tax_rate},
-        'bonds_muni': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': state_tax_rate},
+        'bonds_treasury': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': fed_lt_gains},
+        'bonds_muni': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': state_lt_gains},
         'bonds_other': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': st_gains},
 
         # GLD, SLV etc.
         'collectibles': {'ST_GAINS': st_gains, 'LT_GAINS': collectibles_lt, 'INCOME': st_gains}
     }
+    # return {
+    #     'equities': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains,   'INCOME': lt_gains},
+    #     'reits': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains,   'INCOME': st_gains},
+    #     'bonds_treasury': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': federal_tax_rate},
+    #     'bonds_muni': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': state_tax_rate},
+    #     'bonds_other': {'ST_GAINS': st_gains,  'LT_GAINS': lt_gains, 'INCOME': st_gains},
+    #
+    #     # GLD, SLV etc.
+    #     'collectibles': {'ST_GAINS': st_gains, 'LT_GAINS': collectibles_lt, 'INCOME': st_gains}
+    # }
 
 def get_tax_rates_by_ticker(tax_rates: dict, ticker_list: list):
     """

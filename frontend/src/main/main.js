@@ -35,7 +35,7 @@ class MainInterface extends React.Component {
         let borrowing_costs_selector = null;
         if (leverage > 1) {
             borrowing_costs_selector = [
-                <div key="borrow" className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                <div key="borrow" className="col-xl-6 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                     <div className="input-group input-group-sm mb-1">
                         <div className="input-group-prepend">
                             <span className="input-group-text tax_type_name">
@@ -68,7 +68,7 @@ class MainInterface extends React.Component {
                 <div className={"col-12"}>
                     <div className={"row inner_config_row pt-4"}>
                         {/*Start Year Selector*/}
-                        <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                        <div className="col-xl-6 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                             <div className="input-group input-group-sm mb-1">
                                 <div className="input-group-prepend">
                                     <span className="input-group-text">Start Year </span>
@@ -87,7 +87,7 @@ class MainInterface extends React.Component {
                         </div>
 
                         {/*Money Market Holding Selector*/}
-                        <div className="col-xl-8 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                        <div className="col-xl-6 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                             <div className="input-group input-group-sm mb-1">
                                 <div className="input-group-prepend">
                                     <span className="input-group-text">Holding while in Cash</span>
@@ -101,7 +101,7 @@ class MainInterface extends React.Component {
                         </div>
 
                         {/*Leverage Selector*/}
-                        <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                        <div className="col-xl-6 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                             <div className="input-group input-group-sm mb-1">
                                 <div className="input-group-prepend">
                                     <span className="input-group-text">Leverage </span>
@@ -124,7 +124,7 @@ class MainInterface extends React.Component {
                         {borrowing_costs_selector}
 
                         {/*Taxes Selector*/}
-                        <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                        <div className="col-xl-6 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                             <div className={"btn-group btn-group-sm btn-group-toggle mb-1 " +
                                 "dual_mom_buttons input-group input-group-sm"} data-toggle="buttons">
                                 <div className="input-group-prepend">
@@ -171,11 +171,11 @@ class TaxConfig extends React.Component{
         super(props);
 
         this.config_to_name = {
-            'short_term_cap_gains_rate': 'Short Term Cap Gains',
-            'long_term_cap_gains_rate': 'Long Term Cap Gains',
-            'munis_state_rate': 'Muni Bonds Income',
-            'treasuries_income_rate': 'Treasuries Income',
-            'gld_lt_rate': 'Gold LT Capital Gains',
+
+            'fed_st_gains':     'Federal Short Term Cap Gains',
+            'state_st_gains':   'State Short Term Cap Gains',
+            'fed_lt_gains':     'Federal Long Term Cap Gains',
+            'state_lt_gains':   'State Long Term Cap Gains',
         }
     }
 
@@ -188,7 +188,7 @@ class TaxConfig extends React.Component{
                 const rate_valid = (tax_rate >= 0 && tax_rate <= 100);
                 selectors.push(
 
-                    <div key={tax_type} className="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-xs-12">
+                    <div key={tax_type} className="col-xl-6 col-lg-4 col-md-6 col-sm-12 col-xs-12">
                         <div className="tax_rate_selector input-group input-group-sm">
                             <div className="input-group-prepend">
                                 <span className="input-group-text tax_type_name">{tax_name}</span>
@@ -441,10 +441,17 @@ class MainView extends React.Component {
 
                 'simulate_taxes': false,
                 'tax_rates': {
-                    'short_term_cap_gains_rate': 34,
-                    'long_term_cap_gains_rate':  20.1,
-                    'munis_state_rate':          12.1,
-                    'treasuries_income_rate':     9.82,
+                    'fed_st_gains': 22,
+                    'state_st_gains':   12,
+                    'fed_lt_gains': 15,
+                    'state_lt_gains':   5.1,
+
+                    // 'short_term_cap_gains_rate': 34,
+                    // 'long_term_cap_gains_rate':  20.1,
+                    // 'federal_tax_rate':          22,
+                    // 'state_tax_rate':            12,
+                    // 'munis_state_rate':          12.1,
+                    // 'treasuries_income_rate':     9.82,
                     // 'short_term_cap_gains_rate': {'name': 'Short Term Cap Gains', 'rate':34},
                     // 'long_term_cap_gains_rate': {'name': 'Long Term Cap Gains', 'rate': 20.1},
                     // 'munis_state_rate': {'name': 'Muni Bonds Income ', 'rate': 12.1},
@@ -668,6 +675,8 @@ class MainView extends React.Component {
                             data : d.data,
                             dm_config: dm_config
                         });
+
+                        console.log("New data", d.data);
                         return true
                     })
             }).catch(() => {
