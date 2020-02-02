@@ -16,6 +16,7 @@ export class ReturnsChart extends React.Component {
 
         this.state = {
             tooltip_data: null,
+            highlighted_idx: undefined,
             zoomTransform: null,
         };
 
@@ -46,11 +47,8 @@ export class ReturnsChart extends React.Component {
         this.yAxisGridLinesRef = React.createRef();
         this.yAxisGridLinesGenerator = null;
 
-        // the actual bars to render for the barchart (often, multiple months of data are
-        // aggregated into one bar
-        this.bars = null;
-        // multiple functions calculate the width of the bar -> better to just store it here
-        this.bar_width = null;
+        this.returnsLineRef = React.createRef();
+        this.sp500LineRef = React.createRef();
 
         // margins of the element
         this.margin = {
@@ -67,9 +65,6 @@ export class ReturnsChart extends React.Component {
             .translateExtent([[-100, -100], [this.graph_width + 100, this.props.height+100]])
             .extent([[-100, -100], [this.graph_width + 100, this.props.height + 100]])
             .on("zoom", this.zoomed.bind(this));
-
-
-        console.log("Height", this.props.height, window.innerHeight);
     }
     zoomed() {
         this.setState({
@@ -106,13 +101,24 @@ export class ReturnsChart extends React.Component {
         const x = e.pageX - e.target.getBoundingClientRect().x;
         const date = this.xScale.invert(x);
 
-        for (const bar of this.bars) {
-            if (bar.date_start <= date && date <= bar.date_end) {
-                this.setState({'tooltip_data': bar});
-                break;
+        let highlighted_idx = null;
+        for (const [idx, month] of this.props.data.monthly_data.entries()){
+            if (month.date_start <= date && date <= month.date_end){
+                highlighted_idx = idx;
+                month.x = this.xScale(month.date_end);
+                month.x = Math.max(month.x, this.margin.left);
+                month.x = Math.min(month.x, this.graph_width - this.margin.left);
+                month.y = this.yScale(month.value_end_posttax);
+                month.y = Math.min(month.y, this.props.height - this.margin.top);
+                month.y = Math.max(month.y, this.margin.top);
+
+                this.setState({'tooltip_data': month, highlighted_idx: highlighted_idx});
             }
         }
     }
+
+    handle_mouseout(){
+        this.setState({tooltip_data: null, highlighted_idx: undefined})}
 
     calculate_paths_with_d3(){
 
@@ -139,8 +145,8 @@ export class ReturnsChart extends React.Component {
         this.yScale = d3.scaleLog().base(10)
             .range([this.props.height - this.margin.top, this.margin.bottom])
             .domain([
-                0.5 * d3.min(this.props.data.monthly_data, d => d.value_start),
-                1.5 * d3.max(this.props.data.monthly_data, d => d.value_end)]);
+                0.5 * d3.min(this.props.data.monthly_data, d => d.value_start_posttax),
+                1.5 * d3.max(this.props.data.monthly_data, d => d.value_end_posttax)]);
 
         // update x and y scale with zoom/drag information
         if (this.state.zoomTransform){
@@ -148,10 +154,20 @@ export class ReturnsChart extends React.Component {
             this.yScale.domain(this.state.zoomTransform.rescaleY(this.yScale).domain());
         }
 
-        this.initialize_bar_paths();
+        // get line generators for returns and benchmark
+        this.returns_line_generator = this.get_line_generator('value_end_posttax');
+        this.sp500_line_generator = this.get_line_generator('value_end_spy_posttax');
 
         this.xAxisGenerator = d3.axisBottom().scale(this.xScale)
-            .tickFormat(d3.timeFormat('%Y'));
+            .ticks(10)
+            .tickSize(20)
+            .tickFormat((d) => (this.state.zoomTransform && this.state.zoomTransform.k > 4) ?
+                d3.timeFormat('%b %Y')(d): d3.timeFormat('%Y')(d));
+        //     console.log(d, this.state.zoomTransform);
+        //     return 5;
+        // });
+
+        // d3.timeFormat('%b %Y'));
 
         // to create grid lines, we basically create an empty axis with "ticks" (i.e. the
         // lines connecting the axis to the numbers) that run across the whole chart.
@@ -161,8 +177,8 @@ export class ReturnsChart extends React.Component {
             .tickFormat('');
 
         this.yAxisGenerator = d3.axisLeft().scale(this.yScale)
-            .tickFormat(d3.format(',.1f'))
-            .ticks(2);
+            // if tick < 1, show 1 decimal point. otherwise round to full number.
+            .ticks(20, x => x < 1 ? x.toFixed(1) : x.toFixed(0));
         this.yAxisGridLinesGenerator = d3.axisLeft().scale(this.yScale)
             .tickSize(-this.graph_width + this.margin.left + this.margin.right)
             .ticks(2)
@@ -170,69 +186,31 @@ export class ReturnsChart extends React.Component {
     }
 
 
-    initialize_bar_paths(){
+    // format_x_ticks(x) {
+    //     return x < 1 ? x.toFixed(1) : x.toFixed(0);
+    //     // console.log(x);
+    //     // const e = Math.log10(x);
+    //     // if (e !== Math.floor(e)) return; // Ignore non-exact power of ten.
+    //     // return `10${(e + "").replace(/./g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"[c] || "⁻")}`;
+    // }
 
-        // initialize the bars for the chart
+    get_line_generator(return_field_name){
+        return d3.line()
+            .x(d => this.xScale(d.date_end))
+            .y(d => this.yScale(d[return_field_name]))
 
-        // Step 1: figure out how many months of data to merge into each bar
-        const chart_width = this.graph_width - this.margin.left - this.margin.right;
-        const data_len = this.props.data.monthly_data.length;
-        let number_of_months_to_merge = 1;
-        for ( number_of_months_to_merge of [1, 2, 4, 6, 12, 24]){
-            this.bar_width = chart_width / data_len * number_of_months_to_merge;
-            if (this.state.zoomTransform){
-                // zoomTransform essentially stretches how wide the chart is
-                this.bar_width *= this.state.zoomTransform.k;
-            }
-            if (this.bar_width > 5){
-                break
-            }
-        }
-
-        // Step 2: generate bars
-        this.bars = [];
-        for (let index = 0; index < data_len; index += number_of_months_to_merge){
-            const start = this.props.data.monthly_data[index];
-            const x = this.xScale(start.date_start);
-
-            // if bar is outside chart area, skip it
-            if (x < this.margin.left || x > this.graph_width - this.margin.right){
-                continue
-            }
-
-            // make sure to limit last value to an existing index
-            const end = this.props.data.monthly_data[Math.min(
-                index + number_of_months_to_merge - 1, data_len - 1)];
-            let y1 = this.yScale(Math.max(start.value_start, end.value_end));
-            let y2 = this.yScale(Math.min(start.value_start, end.value_end));
-
-            // if y2 < top margin, the element is invisible
-            if (y2 < this.margin.top){
-                continue
-            }
-            // if y1 > chart height, element is invisible
-            if (y1 > this.props.height - this.margin.bottom){
-                continue
-            }
-
-
-            // limit y1 and y2 to chart area
-            y1 = Math.max(this.margin.top, y1);
-            y2 = Math.max(this.margin.top, y2);
-            y1 = Math.min(this.props.height - this.margin.bottom, y1);
-            y2 = Math.min(this.props.height - this.margin.bottom, y2);
-
-            const bar = {
-                'x': x, 'y': y1, 'height': Math.max(1, (y2 - y1)),
-                'gained_money': end.value_end > start.value_start,
-                'value_start': start.value_start, 'value_end': end.value_end,
-                'date_start': start.date_start, 'date_end': end.date_end,
-                'width': this.bar_width - 2
-            };
-            this.bars.push(bar);
-        }
+            // defined can be used for clipping but it is choppy
+            .defined(d => {
+                const x = this.xScale(d.date_end);
+                const y = this.yScale(d[return_field_name]);
+                return (
+                    (x < this.graph_width - this.margin.right) &&
+                    (x > this.margin.left) &&
+                    (y < this.props.height - this.margin.top) &&
+                    (y > this.margin.bottom)
+                )
+            })
     }
-
 
     render() {
         if (!this.props.data) {
@@ -253,37 +231,33 @@ export class ReturnsChart extends React.Component {
                         // width={800}
                         height={this.props.height}
                         onMouseMove={(e) => this.handle_mouseover(e)}
+                        onMouseOut={() => this.handle_mouseout()}
                     >
                         <g>
-                            <g>
-                                <g ref={this.xAxisGridLinesRef} className={"grid"} />
-                                <g ref={this.yAxisGridLinesRef} className={"grid"} />
-                            </g>
+                            <g ref={this.xAxisGridLinesRef} className={"grid"} />
+                            <g ref={this.yAxisGridLinesRef} className={"grid"} />
+                        </g>
+                        <g>
+                            {/*<path className={"benchmark_line"} d={this.sp500_line}*/}
+                            {/*    stroke={d3.schemeCategory10[1]}/>*/}
+                            {/*<path className={"return_line"} d={this.returns_line}*/}
+                            {/*    stroke={d3.schemeCategory10[0]}/>*/}
+                            <path ref={this.sp500LineRef} className={"benchmark_line"}
+                                stroke="#ff7f0e"/>
+                            <path ref={this.returnsLineRef} className={"return_line"}
+                                stroke="#1f77b4"/>
+                        </g>
+                        <g>
+                            <g ref={this.xAxisRef} />
+                            <g ref={this.yAxisRef} />
+                        </g>
 
-                            <g>
-                                <g ref={this.xAxisRef} />
-                                <g ref={this.yAxisRef} />
-                            </g>
-                        </g>
-                        <g className="bars">
-                            {
-                                this.bars.map((d, idx) => {
-                                    return <rect
-                                        key={idx}
-                                        x={d.x} y={d.y}
-                                        width={d.width}
-                                        height={d.height}
-                                        style={{'fill': d.gained_money ? '#00b061' : '#ff3031'}}
-                                    />
-                                })
-                            }
-                        </g>
                         <g id={"crosshairs"}>
 
                             <line
                                 // vertical line
-                                x1={ttdata ? ttdata.x + this.bar_width / 2 - 1 : -1000}
-                                x2={ttdata ? ttdata.x + this.bar_width / 2 - 1 : -1000}
+                                x1={ttdata ? ttdata.x : -1000}
+                                x2={ttdata ? ttdata.x : -1000}
                                 y1={this.margin.top}
                                 y2={this.props.height - this.margin.bottom}
                                 style={{'stroke': 'black', 'strokeDasharray': '4'}}
@@ -294,12 +268,8 @@ export class ReturnsChart extends React.Component {
                                 x1={this.margin.left}
                                 x2={this.graph_width - this.margin.right}
                                 // y data + height if loss
-                                y1={ttdata ?
-                                    ttdata.y + (ttdata.gained_money ? 0 : ttdata.height) :
-                                    -1000}
-                                y2={ttdata ?
-                                    ttdata.y + (ttdata.gained_money ? 0 : ttdata.height) :
-                                    -1000}
+                                y1={ttdata ? ttdata.y : -1000}
+                                y2={ttdata ? ttdata.y : -1000}
                                 style={{'stroke': 'black', 'strokeDasharray': '4'}}
                             />
                         </g>
@@ -314,8 +284,18 @@ export class ReturnsChart extends React.Component {
                             style={{'fill': '#21252900'}}
                         />
                     </svg>
+                    <ChartTickerTooltips
+                        // if one month is highlighted, select data from that month. Otherwise
+                        // select the last month
+                        data={this.props.data.monthly_data[
+                            this.state.highlighted_idx ?
+                                this.state.highlighted_idx :
+                                this.props.data.monthly_data.length - 1
+                        ]}
+                    />
                     <ChartTooltip
                         tooltip_data={this.state.tooltip_data}
+                        // highlighted_idx={this.state.highlighted_idx}
                     />
                 </>
             )
@@ -347,6 +327,17 @@ export class ReturnsChart extends React.Component {
             .call(this.yAxisGridLinesGenerator)
             .attr('transform', `translate(${this.margin.left}, 0)`);
 
+        // this.sp500_line = this.lineGenerator(this.props.data.monthly_data);
+
+        // path.datum(data).attr("d", line);
+        d3.select(this.returnsLineRef.current)
+            .datum(this.props.data.monthly_data)
+            .attr("d", this.returns_line_generator);
+
+        d3.select(this.sp500LineRef.current)
+            .datum(this.props.data.monthly_data)
+            .attr("d", this.sp500_line_generator);
+
         // on update ?? figure out new zoom state?? still not quite sure what this does...
         d3.select(this.graphSVG.current)
             .call(this.zoom);
@@ -356,10 +347,43 @@ export class ReturnsChart extends React.Component {
 
 ReturnsChart.propTypes={
     data: PropTypes.object,
-    data_load_error: PropTypes.str,
-    config_hash: PropTypes.str,
+    data_load_error: PropTypes.string,
+    config_hash: PropTypes.string,
     width: PropTypes.number.isRequired,
     height: PropTypes.number.isRequired
+};
+
+
+class ChartTickerTooltips extends React.Component{
+    constructor(props) {
+        super(props);
+    }
+
+    render(){
+        if(this.props.data) {
+            return (
+                <div id={"ticker_boxes"}>
+                    <div id={"strategy_box"} className={"ticker_box"}>
+                        <div>Strategy</div>
+                        <div className={"ticker_box_value_div"}>
+                            {(this.props.data.value_end_posttax * 100).toFixed(0) + "%"}
+                        </div>
+                    </div>
+                    <div id={"benchmark_box"} className={"ticker_box"}>
+                        <div>S&P 500</div>
+                        <div className={"ticker_box_value_div"}>
+                            {(this.props.data.value_end_spy_posttax * 100).toFixed(0) + "%"}
+                        </div>
+                    </div>
+                </div>
+            )
+        } else {
+            return <div/>
+        }
+    }
+}
+ChartTickerTooltips.propTypes = {
+    data: PropTypes.object,
 };
 
 
@@ -373,26 +397,38 @@ class ChartTooltip extends React.Component{
 
             const data = this.props.tooltip_data;
             const date_start = data.date_start
-                .toLocaleDateString('en-US', {month: 'long', year:'numeric'});
+                .toLocaleDateString('en-US', {month: 'short', year:'numeric'});
 
-            // period ends on previous month, not current month
-            const date_month_to_last = new Date(data.date_end);
-            date_month_to_last.setMonth(data.date_end.getMonth() - 1);
-            const date_end = date_month_to_last
-                .toLocaleDateString('en-US', {month: 'long', year:'numeric'});
-            const pl_percent = (((data.value_end / data.value_start) - 1) * 100).toFixed(3) +"%";
+            // // period ends on previous month, not current month
+            // const date_month_to_last = new Date(data.date_end);
+            // date_month_to_last.setMonth(data.date_end.getMonth() - 1);
+            // const date_end = date_month_to_last
+            //     .toLocaleDateString('en-US', {month: 'long', year:'numeric'});
+            const pl_percent = (((data.value_end_posttax / data.value_start_posttax) - 1) * 100).toFixed(3) +"%";
+
+            let holdings = [];
+            for (const holding of this.props.tooltip_data.holdings){
+                holdings.push(
+                    <tr key={holding.name}>
+                        <td>{holding.holdings}</td>
+                        <td className={"returns_col"}>
+                            {((holding.posttax - 1) * 100).toFixed(3) + "%"}
+                        </td>
+                    </tr>)
+            }
 
             return(
                 <div className={'chart_tooltip'}>
                     <table className="table">
                         <tbody>
                             <tr>
-                                <td colSpan={2}>{date_start}-{date_end}</td>
+                                <td colSpan={2}>{date_start}</td>
                             </tr>
                             <tr>
                                 <td>Return</td>
-                                <td>{pl_percent}</td>
+                                <td className={"returns_col"}>{pl_percent}</td>
                             </tr>
+                            {holdings}
                         </tbody>
                     </table>
 
@@ -406,5 +442,6 @@ class ChartTooltip extends React.Component{
     }
 }
 ChartTooltip.propTypes = {
-    tooltip_data: PropTypes.object
+    tooltip_data: PropTypes.object,
+    // highlighted_idx: PropTypes.number
 };

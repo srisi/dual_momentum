@@ -2,13 +2,21 @@ html {
     font-size: 75%;
 }
 
-#components_row{
+.display-2{
+    text-align: center;
+}
+
+.config_row{
     margin-left: 0px;
     background: #f3f3f3;
     border-radius: 1rem;
 }
 
-#components_header{
+.inner_config_row{
+    margin-left: 0;
+}
+
+.config_header{
     background: #2469b34d;
     writing-mode: vertical-rl;
     text-orientation: mixed;
@@ -23,9 +31,6 @@ html {
     border-bottom-left-radius: 1rem;
 }
 
-#components_content{
-    width: 95%;
-}
 
 #chart_container svg{
     /*margin: 10px;*/

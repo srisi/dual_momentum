@@ -1,6 +1,7 @@
 /*#chart_container{*/
 /*    margin-left: -50px;*/
 /*}*/
+@import url('https://fonts.googleapis.com/css?family=Roboto+Mono');
 
 .row[min-width~="1200px"] #chart_container {
     margin-left: -50px;
@@ -19,6 +20,71 @@
 }
 
 .chart_tooltip{
-    position: relative;
-    opacity: 0.8;
+    opacity: 0.9;
+    background: white;
+    box-shadow: 0 0 8px 0 rgba(70,78,86,.25);
+    border-radius: 0.4rem;
+
+    padding-right: 0.2rem;
+
+    position: absolute;
+    top: 98px;
+    left: 80px;
+
+    font-family: "Roboto Mono", Courier, monospace;
+}
+
+#ticker_boxes{
+    position: absolute;
+    top: 65px;
+    left: 80px;
+
+    font-family: "Roboto Mono", Courier, monospace;
+}
+
+.ticker_box{
+    display: inline-block;
+    padding: 0.4rem;
+    background: white;
+    opacity: 0.9;
+    border-radius: 0.4rem;
+    box-shadow: 0 0 8px 0 rgba(70,78,86,.25);
+}
+
+.ticker_box div{
+    display: inline-block;
+}
+
+.ticker_box_value_div{
+    padding-left: 0.5rem;
+    width: 4rem;
+}
+
+#strategy_box{
+    border-left: 1rem solid #1f77b4;
+}
+
+#benchmark_box{
+    border-left: 1rem solid #ff7f0e;
+    margin-left: 1rem;
+}
+
+
+.chart_tooltip td{
+    padding: 0.1rem 0.1rem 0.1rem 0.3rem;
+    border-top: none;
+}
+
+.returns_col{
+    text-align: right;
+    width: 6rem;
+}
+
+.return_line{
+    fill: none;
+    stroke-width: 0.2rem;
+}
+.benchmark_line{
+    fill: none;
+    stroke-width: 0.1rem;
 }

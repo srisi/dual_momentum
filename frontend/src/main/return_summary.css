@@ -1,0 +1,12 @@
+.nav-link{
+    border-color: #e9ecef #e9ecef #dee2e6 !important;
+    cursor: pointer;
+}
+
+.nav-link:hover{
+    background: #e4e4e4;
+}
+
+.table-wrapper-scroll-y{
+    max-height: 300px !important;
+}

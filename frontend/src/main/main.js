@@ -9,14 +9,14 @@ import queryString from 'query-string';
 
 // why does the commented out import not work?
 import * as json_stable_stringify from 'json-stable-stringify';
-// import {json_stable_stringify} from 'json-stable-stringify';
-
-import equal from "fast-deep-equal/es6/react";
 
 import {ReturnsChart} from "./return_chart";
+import {ReturnsSummary} from "./return_summary";
 import {AutoCompleteField} from "./autocomplete";
 
+import {ticker_configs} from "./ticker_configs";
 
+import equal from "fast-deep-equal/es6/react";
 
 import { getCookie } from '../common'
 import './main.css';
@@ -35,7 +35,7 @@ class MainInterface extends React.Component {
         let borrowing_costs_selector = null;
         if (leverage > 1) {
             borrowing_costs_selector = [
-                <div key="borrow" className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                <div key="borrow" className="col-xl-6 col-lg-4 col-md-6 col-sm-6 col-xs-12">
                     <div className="input-group input-group-sm mb-1">
                         <div className="input-group-prepend">
                             <span className="input-group-text tax_type_name">
@@ -63,88 +63,97 @@ class MainInterface extends React.Component {
 
 
         return(
-            <div>
-                <div className="row">
-                    <div className={"col-12"}>
-                        <h2>Configuration</h2>
-                    </div>
-                </div>
-
-                <div className="row">
-
-                    {/*Start Year Selector*/}
-                    <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
-                        <div className="input-group input-group-sm mb-1">
-                            <div className="input-group-prepend">
-                                <span className="input-group-text">Start Year </span>
-                            </div>
-                            <input
-                                className={"form-control " + ((start_year >= 1980  &&
-                                    start_year < 2018) ? "" : "is-invalid")}
-                                type="number" name="start_year" min="1980" max="2018" step={1}
-                                value={start_year}
-                                onChange={(e) => this.props.handle_config_update(e)}
-                            />
-                            <div className="invalid-feedback">
-                                    Start year has to be between 1980 and 2018.
-                            </div>
-                        </div>
-                    </div>
-
-                    {/*Leverage Selector*/}
-                    <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
-                        <div className="input-group input-group-sm mb-1">
-                            <div className="input-group-prepend">
-                                <span className="input-group-text">Leverage </span>
-                            </div>
-                            <input
-                                className={"form-control " + ((leverage > 0.00 && leverage < 4)
-                                    ? "" : "is-invalid")}
-                                type="number" name="leverage" min="0" max="4" step={0.01}
-                                value={leverage}
-                                onChange={(e) => this.props.handle_config_update(e)}
-                            />
-                            <div className="invalid-feedback">
-                                    Leverage has to be between 0 and 4.
-                            </div>
-                        </div>
-                    </div>
-
-
-                    {/*Borrowing Costs*/}
-                    {borrowing_costs_selector}
-
-                    {/*Taxes Selector*/}
-                    <div className="col-xl-4 col-lg-4 col-md-6 col-sm-6 col-xs-12">
-                        <div className={"btn-group btn-group-sm btn-group-toggle mb-1 " +
-                            "dual_mom_buttons input-group input-group-sm"} data-toggle="buttons">
-                            <div className="input-group-prepend">
-                                <span className="input-group-text">Simulate Taxes: </span>
-                            </div>
-                            <label className={"btn " + (this.props.config.simulate_taxes ?
-                                "btn-primary active" : "btn-outline-secondary")}>
-                                <input type="radio" name="simulate_taxes"
+            <div className={"row width-95"}>
+                <div className={"col-12"}>
+                    <div className={"row inner_config_row pt-4"}>
+                        {/*Start Year Selector*/}
+                        <div className="col-xl-6 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                            <div className="input-group input-group-sm mb-1">
+                                <div className="input-group-prepend">
+                                    <span className="input-group-text">Start Year </span>
+                                </div>
+                                <input
+                                    className={"form-control " + ((start_year >= 1980  &&
+                                        start_year < 2018) ? "" : "is-invalid")}
+                                    type="number" name="start_year" min="1980" max="2018" step={1}
+                                    value={start_year}
                                     onChange={(e) => this.props.handle_config_update(e)}
                                 />
-                                Yes
-                            </label>
-                            <label className={"btn " + (!this.props.config.simulate_taxes ?
-                                "btn-primary active" : "btn btn-outline-secondary")}>
-                                <input type="radio" name="simulate_taxes"
+                                <div className="invalid-feedback">
+                                        Start year has to be between 1980 and 2018.
+                                </div>
+                            </div>
+                        </div>
+
+                        {/*Money Market Holding Selector*/}
+                        <div className="col-xl-6 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                            <div className="input-group input-group-sm mb-1">
+                                <div className="input-group-prepend">
+                                    <span className="input-group-text">Holding while in Cash</span>
+                                </div>
+                                <AutoCompleteField
+                                    ticker={this.props.config.money_market_holding}
+                                    handle_holding_update={(ticker) =>
+                                        this.props.handle_mmh_update(ticker)}
+                                />
+                            </div>
+                        </div>
+
+                        {/*Leverage Selector*/}
+                        <div className="col-xl-6 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                            <div className="input-group input-group-sm mb-1">
+                                <div className="input-group-prepend">
+                                    <span className="input-group-text">Leverage </span>
+                                </div>
+                                <input
+                                    className={"form-control " + ((leverage > 0.00 && leverage < 4)
+                                        ? "" : "is-invalid")}
+                                    type="number" name="leverage" min="0" max="4" step={0.01}
+                                    value={leverage}
                                     onChange={(e) => this.props.handle_config_update(e)}
                                 />
-                                No
-                            </label>
+                                <div className="invalid-feedback">
+                                        Leverage has to be between 0 and 4.
+                                </div>
+                            </div>
+                        </div>
+
+
+                        {/*Borrowing Costs*/}
+                        {borrowing_costs_selector}
+
+                        {/*Taxes Selector*/}
+                        <div className="col-xl-6 col-lg-4 col-md-6 col-sm-6 col-xs-12">
+                            <div className={"btn-group btn-group-sm btn-group-toggle mb-1 " +
+                                "dual_mom_buttons input-group input-group-sm"} data-toggle="buttons">
+                                <div className="input-group-prepend">
+                                    <span className="input-group-text">Simulate Taxes: </span>
+                                </div>
+                                <label className={"btn " + (this.props.config.simulate_taxes ?
+                                    "btn-primary active" : "btn-outline-secondary")}>
+                                    <input type="radio" name="simulate_taxes"
+                                        onChange={(e) => this.props.handle_config_update(e)}
+                                    />
+                                    Yes
+                                </label>
+                                <label className={"btn " + (!this.props.config.simulate_taxes ?
+                                    "btn-primary active" : "btn btn-outline-secondary")}>
+                                    <input type="radio" name="simulate_taxes"
+                                        onChange={(e) => this.props.handle_config_update(e)}
+                                    />
+                                    No
+                                </label>
+                            </div>
                         </div>
                     </div>
+                    <TaxConfig
+                        key={0}
+                        config={this.props.config}
+                        handle_config_update={(e) => this.props.handle_config_update(e)}
+                        handle_tax_rate_update={(tax_type, rate) =>
+                            this.props.handle_tax_rate_update(tax_type, rate)}
+                    />
                 </div>
-                <TaxConfig
-                    key={0}
-                    config={this.props.config}
-                    handle_config_update={(e) => this.props.handle_config_update(e)}
-                    handle_tax_rate_update={(tax_type, rate) =>
-                        this.props.handle_tax_rate_update(tax_type, rate)}
-                />
             </div>
         )
     }
@@ -153,6 +162,7 @@ MainInterface.propTypes={
     config: PropTypes.object.isRequired,
     handle_config_update: PropTypes.func.isRequired,
     handle_tax_rate_update: PropTypes.func.isRequired,
+    handle_mmh_update: PropTypes.func.isRequired
 };
 
 
@@ -161,11 +171,11 @@ class TaxConfig extends React.Component{
         super(props);
 
         this.config_to_name = {
-            'short_term_cap_gains_rate': 'Short Term Cap Gains',
-            'long_term_cap_gains_rate': 'Long Term Cap Gains',
-            'munis_state_rate': 'Muni Bonds Income',
-            'treasuries_income_rate': 'Treasuries Income',
-            'gld_lt_rate': 'Gold LT Capital Gains',
+
+            'fed_st_gains':     'Federal Short Term Cap Gains',
+            'state_st_gains':   'State Short Term Cap Gains',
+            'fed_lt_gains':     'Federal Long Term Cap Gains',
+            'state_lt_gains':   'State Long Term Cap Gains',
         }
     }
 
@@ -178,7 +188,7 @@ class TaxConfig extends React.Component{
                 const rate_valid = (tax_rate >= 0 && tax_rate <= 100);
                 selectors.push(
 
-                    <div key={tax_type} className="col-xl-4 col-lg-4 col-md-6 col-sm-12 col-xs-12">
+                    <div key={tax_type} className="col-xl-6 col-lg-4 col-md-6 col-sm-12 col-xs-12">
                         <div className="tax_rate_selector input-group input-group-sm">
                             <div className="input-group-prepend">
                                 <span className="input-group-text tax_type_name">{tax_name}</span>
@@ -203,7 +213,7 @@ class TaxConfig extends React.Component{
             }
 
             return(
-                <div className="row">
+                <div className="row inner_config_row">
                     {selectors}
                 </div>
             )
@@ -233,7 +243,7 @@ class ComponentSelector extends React.Component {
         // Empty component Shell
         if (is_empty_component) {
             return (
-                <div className="col-xl4 col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                <div className="col-xl-6 col-lg-4 col-md-4 col-sm-6 col-xs-12">
                     {/*Title / Name*/}
                     <input className="component_title form-control component_title_new"
                         type="text" name="name" maxLength="14" size="14" disabled
@@ -277,7 +287,7 @@ class ComponentSelector extends React.Component {
             }
 
             return (
-                <div className="col-xl-4 col-lg-3 col-md-2 col-sm-6 col-xs-12 pb-2">
+                <div className="col-xl-6 col-lg-4 col-md-4 col-sm-6 col-xs-12 pb-2">
 
                     {/*Title / Name*/}
                     <input className="component_title form-control"
@@ -418,7 +428,9 @@ class MainView extends React.Component {
         super(props);
         this.state = {
             data: null,  // data for the viz
-            ticker_configs: null,
+
+            //is the current configuration valid, i.e. can we load new data with it?
+            config_is_valid: true,
             dm_config: {
 
                 'data_load_error': undefined,
@@ -431,15 +443,10 @@ class MainView extends React.Component {
 
                 'simulate_taxes': true,
                 'tax_rates': {
-                    'short_term_cap_gains_rate': 34,
-                    'long_term_cap_gains_rate':  20.1,
-                    'munis_state_rate':          12.1,
-                    'treasuries_income_rate':     9.82,
-                    // 'short_term_cap_gains_rate': {'name': 'Short Term Cap Gains', 'rate':34},
-                    // 'long_term_cap_gains_rate': {'name': 'Long Term Cap Gains', 'rate': 20.1},
-                    // 'munis_state_rate': {'name': 'Muni Bonds Income ', 'rate': 12.1},
-                    // 'treasuries_income_rate': {'name': 'Treasuries Income ', 'rate': 9.82},
-                    // 'gld_lt_rate': {'name': 'Gold LT Capital Gains', 'rate': 20.1},
+                    'fed_st_gains': 22,
+                    'state_st_gains':   12,
+                    'fed_lt_gains': 15,
+                    'state_lt_gains':   5.1,
                 },
                 'money_market_holding': 'VGIT',
                 'momentum_leverages': {
@@ -453,19 +460,35 @@ class MainView extends React.Component {
             dm_components: [
                 {
                     'name': 'Equities',
-                    'weight': 0.5,
+                    'weight': 0.25,
                     'dual_momentum': true,
                     'lookback': 12,
-                    'max_holdings': 2,
+                    'max_holdings': 1,
                     'holdings': ['VTI', 'IEFA', 'IEMG', ''],
                 },
                 {
                     'name': 'REITs',
-                    'weight': 0.5,
+                    'weight': 0.25,
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 1,
-                    'holdings': ['VNQ', 'VNQI', 'IEF', '']
+                    'holdings': ['VNQ', 'REM', '']
+                },
+                {
+                    'name': 'Bonds',
+                    'weight': 0.25,
+                    'dual_momentum': true,
+                    'lookback': 12,
+                    'max_holdings': 1,
+                    'holdings': ['LQD', 'HYG', '']
+                },
+                {
+                    'name': 'Safety',
+                    'weight': 0.25,
+                    'dual_momentum': true,
+                    'lookback': 12,
+                    'max_holdings': 1,
+                    'holdings': ['TLT', 'GLD', '']
                 },
                 {
                     'name': '',
@@ -473,7 +496,6 @@ class MainView extends React.Component {
             ]
         };
         this.csrftoken = getCookie('csrftoken');
-        this.time_of_last_state_change = Date.now()
     }
 
     // shouldComponentUpdate(nextProps, nextState, nextContext) {
@@ -488,6 +510,8 @@ class MainView extends React.Component {
     }
 
     handle_config_update(event){
+
+        console.log(event);
 
         let dm_config = {... this.state.dm_config};
         const ename = event.target.name;
@@ -510,19 +534,27 @@ class MainView extends React.Component {
         this.setState({dm_config});
     }
 
+    handle_mmh_update(ticker){
+        let dm_config = {... this.state.dm_config};
+        dm_config.money_market_holding = ticker;
+        this.setState({dm_config});
+    }
+
     handle_holding_update(component_id, holding_id, ticker){
         let dm_components = [... this.state.dm_components];
         let dm_component = {... dm_components[component_id]};
         let holdings = [... dm_components[component_id]['holdings']];
-
-        console.log(holdings);
         holdings[holding_id] = ticker;
-        console.log(holdings);
 
+        console.log("t", ticker);
+        console.log(ticker_configs);
+
+        const config_is_valid = (ticker in ticker_configs || ticker === '') ?
+            this.state.config_is_valid: false;
 
         dm_component.holdings = holdings;
         dm_components[component_id] = dm_component;
-        this.setState({dm_components});
+        this.setState({dm_components, config_is_valid});
     }
 
     handle_component_update(component_id, event){
@@ -560,8 +592,13 @@ class MainView extends React.Component {
         // add new component
         if (i === 1) {
             let dm_component = {... dm_components[dm_components.length - 1]};
+            let name = dm_components[dm_components.length -1].name;
+            if (name === ''){
+                name = `Component ${dm_components.length}`
+            }
+
             dm_component = {
-                'name': dm_components[dm_components.length -1].name,
+                'name': name,
                 'weight': 0,
                 'dual_momentum': true,
                 'lookback': 12,
@@ -614,8 +651,15 @@ class MainView extends React.Component {
     }
 
     async load_result_data(url_params) {
+        const cur_stringified_config = json_stable_stringify({
+            'dm_components':  this.state.dm_components,
+            'dm_config': this.state.dm_config
+        });
         if (url_params === undefined){
-            url_params = 'conf=%7B%22dm_components%22%3A%5B%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VTI%22%2C%22IEFA%22%2C%22IEMG%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A2%2C%22name%22%3A%22Equities%22%2C%22weight%22%3A0.5%7D%2C%7B%22dual_momentum%22%3Atrue%2C%22holdings%22%3A%5B%22VNQ%22%2C%22VNQI%22%2C%22IEF%22%2C%22%22%5D%2C%22lookback%22%3A12%2C%22max_holdings%22%3A1%2C%22name%22%3A%22REITs%22%2C%22weight%22%3A0.5%7D%2C%7B%22name%22%3A%22%22%7D%5D%2C%22dm_config%22%3A%7B%22borrowing_costs_above_libor%22%3A1.5%2C%22costs_per_trade%22%3A0.1%2C%22leverage%22%3A1%2C%22momentum_leverages%22%3A%7B%22config%22%3A%7B%220.8%22%3A-0.3%2C%220.85%22%3A-0.3%2C%220.9%22%3A-0.2%2C%220.95%22%3A-0.2%2C%221.05%22%3A0%2C%221.1%22%3A0%2C%221.15%22%3A0.1%2C%221.2%22%3A0.1%2C%221.3%22%3A0.2%7D%2C%22months_for_leverage%22%3A3%7D%2C%22money_market_holding%22%3A%22VGIT%22%2C%22simulate_taxes%22%3Atrue%2C%22start_year%22%3A1980%2C%22tax_rates%22%3A%7B%22long_term_cap_gains_rate%22%3A20.1%2C%22munis_state_rate%22%3A12.1%2C%22short_term_cap_gains_rate%22%3A34%2C%22treasuries_income_rate%22%3A9.82%7D%7D%7D';
+            url_params = queryString.stringify({'conf': cur_stringified_config});
+            window.history.pushState(this.state.dm_config, "",url_params);
+            this.load_result_data(url_params);
+            return
         }
         let url = 'get_test_data?' + url_params;
         fetch(url)
@@ -623,29 +667,31 @@ class MainView extends React.Component {
                 response
                     .json()
                     .then((d) => {
-                        d.data.monthly_data.forEach(element => {
-                            element.date_str = element.date;
-                            element.date_start = new Date(element.date[0], element.date[1]);
-                            element.date_end = new Date(element.date[0], element.date[1] + 1);
-                        });
-                        let dm_config = this.state.dm_config;
-                        dm_config.config_hash = d.config_hash;
-                        dm_config.data_load_error = d.data_load_error;
-                        this.setState({
-                            data : d.data,
-                            dm_config: dm_config
-                        });
-                        return true
+
+                        if (!d.data_load_error) {
+                            d.data.monthly_data.forEach(element => {
+                                element.date_str = element.date;
+                                element.date_start = new Date(element.date[0], element.date[1]);
+                                element.date_end = new Date(element.date[0], element.date[1]
+                                    + 1);
+                            });
+                            let dm_config = this.state.dm_config;
+                            dm_config.config_hash = d.config_hash;
+                            dm_config.data_load_error = d.data_load_error;
+                            this.setState({
+                                data: d.data,
+                                dm_config: dm_config
+                            });
+                            return true
+                        } else{
+                            console.log("error", d.data_load_error);
+                        }
                     })
             }).catch(() => {
                 console.log("error");
                 return false
             });
-
     }
-
-
-
 
     render() {
 
@@ -659,8 +705,6 @@ class MainView extends React.Component {
         }
 
         let dm_components = [];
-
-
         for (const [component_id, _d] of this.state.dm_components.entries()) {
             dm_components.push(
                 <ComponentSelector
@@ -677,31 +721,35 @@ class MainView extends React.Component {
                         this.modify_number_of_holdings(i, component_id)
                     }}
                 />
-            )
+            );
         }
-
-        console.log("s", this.state);
-        console.log("err", this.state.dm_config.data_load_error);
 
         return (
             <div className="container-fluid">
+                <h1 className="display-2">Dual Momentum Backtester</h1>
+
                 <div className={"row"} id={"config_and_chart_row"}>
 
                     <div className={"col-xl-6"}>
+                        <div className="row mt-4 config_row" id="components_row">
 
-                        <MainInterface
-                            config={{... this.state.dm_config}}
-                            handle_config_update={(e) => this.handle_config_update(e)}
-                            handle_tax_rate_update={(tax_type, rate) =>
-                                this.handle_tax_rate_update(tax_type, rate)}
-                        />
+                            <div className={"config_header"}>
+                                <span>CONFIG</span>
+                            </div>
+                            <MainInterface
+                                config={{... this.state.dm_config}}
+                                handle_config_update={(e) => this.handle_config_update(e)}
+                                handle_tax_rate_update={(tax_type, rate) =>
+                                    this.handle_tax_rate_update(tax_type, rate)}
+                                handle_mmh_update={(ticker) => this.handle_mmh_update(ticker)}
+                            />
+                        </div>
 
-
-                        <div className="row mt-4" id="components_row">
-                            <div id={"components_header"}>
+                        <div className="row mt-4 config_row" id="components_row">
+                            <div className={"config_header"}>
                                 <span>COMPONENTS</span>
                             </div>
-                            <div className={"row"} id={"components_content"}>
+                            <div className={"row width-95"}>
                                 {dm_components}
                             </div>
                         </div>
@@ -718,9 +766,14 @@ class MainView extends React.Component {
                                 />
                             </div>
                         </div>
+                        <div id="summary_container">
+                            <ReturnsSummary
+                                data={this.state.data}
+                                simulate_taxes={this.state.dm_config.simulate_taxes}
+                            />
+                        </div>
                     </div>
                 </div>
-
             </div>
         );
     }
@@ -733,13 +786,36 @@ class MainView extends React.Component {
             'dm_components':  this.state.dm_components,
             'dm_config': this.state.dm_config
         });
-        if (old_stringified_config === cur_stringified_config) {
+        const config_is_valid = this.validate_config();
+
+        if (old_stringified_config === cur_stringified_config && config_is_valid) {
             const url_params = queryString.stringify({'conf': cur_stringified_config});
             window.history.pushState(this.state.dm_config, "",url_params);
             this.load_result_data(url_params)
         }
-
     }
+
+    validate_config(){
+        console.log(this.state.dm_components);
+        let errors = [];
+        for (const component of this.state.dm_components){
+            if (component.name === '') {continue;}
+            for (const holding of component.holdings){
+                if(!(holding in ticker_configs) && holding !== ''){
+                    errors.push(`${holding} in ${component.name} is not a valid holding.`)
+                }
+            }
+        }
+
+        if (!(this.state.dm_config.money_market_holding in ticker_configs)){
+            errors.push(`Money market holding (${this.state.dm_config.money_market_holding} is not a
+            valid holding.`)
+        }
+
+        console.log("errors", errors);
+        return (errors.length === 0)
+    }
+
 
     componentDidUpdate(prevProps, prevState, snapshot) {
 

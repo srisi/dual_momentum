@@ -12,6 +12,7 @@ from dual_momentum.ticker_config import TICKER_CONFIG
 from dual_momentum.ticker_data import TickerData
 import multiprocessing
 import time
+import datetime
 
 class DualMomentumComposite:
     """
@@ -110,7 +111,8 @@ class DualMomentumComposite:
         :return:
         """
 
-        tickers_to_init = {'TLT', 'VUSTX', 'VWESX', 'VGIT', 'VFITX', 'FGOVX', 'SPY', 'VFINX'}
+        tickers_to_init = {'TLT', 'VUSTX', 'VWESX', 'VGIT', 'VFITX', 'FGOVX', 'SPY',
+                           'VFINX', self.money_market_holding}
 
         for component in self.components:
             for ticker in component.ticker_list:
@@ -149,16 +151,16 @@ class DualMomentumComposite:
 
     def run_multi_component_dual_momentum(self):
 
-        self.preload_data_in_parallel()
 
-        # if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
-        #     print("using cached dm composite data", self.file_path)
-        #     self.df = pd.read_pickle(self.file_path)
-        if False: pass
+        if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
+            print("using cached dm composite data", self.file_path)
+            self.df = pd.read_pickle(self.file_path)
+
+        # if False: pass
         else:
+
             start_time = time.time()
-
-
+            self.preload_data_in_parallel()
             self.df = TickerData('ONES').data_monthly
             df = self.df
             df.drop(['Adj Close', 'Close'], inplace=True, axis=1)
@@ -167,7 +169,7 @@ class DualMomentumComposite:
             df['taxes'] = 0.0
 
             # each money market holding works like a buy and hold component
-            for mm_holding in ['TLT', 'VGIT', 'SPY']:
+            for mm_holding in {'TLT', 'VGIT', 'SPY', self.money_market_holding}:
                 component = DualMomentumComponent(
                     name=f'__{mm_holding}', ticker_list=[mm_holding], tax_config=self.tax_config,
                     lookback_months=12, max_holdings=1, use_dual_momentum=False, start_date=self.start_date,
@@ -230,8 +232,6 @@ class DualMomentumComposite:
                 # calculate leveraged return and update cash portion accordingly
                 lev_performance_pretax = self.leverage * (row['performance_pretax'] - 1) + 1
                 percentage_cash = 1 - ((1 - row['cash_portion']) * self.leverage)
-                # if row['cash_portion'] > 0:
-                #     embed()
 
                 taxes_month = self.leverage * row['taxes'] * prev_total
 
@@ -292,15 +292,6 @@ class DualMomentumComposite:
                 df_as_dict[date]['cash_portion'] = max(0, percentage_cash)
 
             self.df = pd.DataFrame.from_dict(df_as_dict, orient='index')
-
-
-            self.generate_results_summary()
-
-
-
-
-
-
             self.df.to_pickle(self.file_path)
 
             print(f"running dual momentum on composite took {time.time() - start_time}.")
@@ -312,111 +303,58 @@ class DualMomentumComposite:
 
         summary = {}
 
-        self.df['performance_pretax_cumulative'] = np.cumprod(self.df['lev_performance_pretax'])
-        self.df['performance_posttax_cumulative'] = self.df['lev_performance_posttax'] / 10000
+        self.df['performance_strategy_pretax'] = self.df['lev_performance_pretax']
+        self.df['performance_strategy_posttax'] = self.df['lev_performance_posttax'].pct_change(
+                                                            ).fillna(0) + 1
+        self.df['performance_sp500_pretax'] = self.df['__SPY_performance_pretax']
+        self.df['performance_sp500_posttax'] = self.df['__SPY_performance_posttax']
 
-        # Get drawdown data
-        pretax_dd_arr, max_dd_pretax, max_dd_date_pretax = self.generate_drawdown_data(self.df[
-                                                                'performance_pretax_cumulative'])
-        self.df['drawdown_pretax'] = pretax_dd_arr
-        summary['max_dd_pretax'] = max_dd_pretax
-        summary['max_dd_date_pretax'] = max_dd_date_pretax
+        for name in ['strategy', 'sp500']:
+            for tax_type in ['pretax', 'posttax']:
+                self.df[f'performance_{name}_{tax_type}_cumulative'] = np.cumprod(self.df[
+                                                              f'performance_{name}_{tax_type}'])
 
-        posttax_dd_arr, max_dd_posttax, max_dd_date_posttax = self.generate_drawdown_data(self.df[
-                                                                'performance_posttax_cumulative'])
-        self.df['drawdown_posttax'] = posttax_dd_arr
-        summary['max_dd_posttax'] = max_dd_posttax
-        summary['max_dd_date_posttax'] = max_dd_date_posttax
+                dd_arr, max_dd, max_dd_date = self.generate_drawdown_data(self.df[
+                                                f'performance_{name}_{tax_type}_cumulative'])
+                self.df[f'drawdown_{name}_{tax_type}'] = dd_arr
+                summary[f'max_dd_{name}_{tax_type}'] = max_dd
+                summary[f'max_dd_{name}_{tax_type}_str'] = f'{round((1 - max_dd) * 100, 2)}%'
+                summary[f'max_dd_date_{name}_{tax_type}'] = max_dd_date
+                summary[f'max_dd_date_{name}_{tax_type}_str'] = datetime.datetime(
+                    max_dd_date[0], max_dd_date[1], 1).strftime("%b %Y")
 
-        # Get returns and CAGR
-        summary['total_returns_pretax'] = self.df['performance_pretax_cumulative'][-1] - 1
-        summary['total_returns_posttax'] = self.df['performance_posttax_cumulative'][-1] - 1
+                returns = self.df[f'performance_{name}_{tax_type}_cumulative'][-1] - 1
+                summary[f'total_returns_{name}_{tax_type}'] = returns
+                cagr = returns ** (1 / ((len(self.df) - self.max_lookback_months) / 12))
+                summary[f'cagr_{name}_{tax_type}'] = cagr
+                summary[f'cagr_{name}_{tax_type}_str'] = f'{round((cagr - 1) * 100, 2)}%'
 
-        summary['cagr_pretax'] = summary['total_returns_pretax'] ** (1.0 / ((len(self.df) -
-                                                                     self.max_lookback_months)/12))
-        summary['cagr_posttax'] = summary['total_returns_posttax']**(1.0 / ((len(self.df) -
-                                                                     self.max_lookback_months)/12))
 
-        return_minus_riskfree = (self.df['lev_performance_pretax'] -
-                                 self.df['tbil_performance_pretax'])[self.max_lookback_months: -1]
+            return_minus_riskfree = (self.df[f'performance_{name}_pretax'] -
+                             self.df['tbil_performance_pretax'])[self.max_lookback_months: -1]
+            summary[f'sharpe_{name}'] = np.sqrt(12) * return_minus_riskfree.mean() / \
+                                        return_minus_riskfree.std()
 
-        # same result as empyrical
-        # (http://quantopian.github.io/empyrical/_modules/empyrical/stats.html)
-        summary['sharpe'] = np.sqrt(12) * return_minus_riskfree.mean() / return_minus_riskfree.std()
-        downside_dev = return_minus_riskfree.copy()
-        downside_dev[downside_dev > 0] = 0
-        downside_dev = np.sqrt(np.mean(downside_dev ** 2)) * np.sqrt(12)
-        summary['sortino'] = np.mean(return_minus_riskfree) / downside_dev * 12
-        summary['annual_volatility'] = return_minus_riskfree.std() * (12 ** 0.5)    # alpha = 2
+            downside_dev = return_minus_riskfree.copy()
+            downside_dev[downside_dev > 0] = 0
+            downside_dev = np.sqrt(np.mean(downside_dev ** 2)) * np.sqrt(12)
+            summary[f'sortino_{name}'] = np.mean(return_minus_riskfree) / downside_dev * 12
 
+            # alpha = 2
+            ann_vol = return_minus_riskfree.std() * (12 ** 0.5)
+            summary[f'annual_volatility_{name}'] = ann_vol
+            summary[f'annual_volatility_{name}_str'] = f'{round(ann_vol * 100, 2)}%'
 
         # get correlations
-        columns = [f'{component.name}_performance_pretax' for component in self.components]
-        columns += [f'__{self.money_market_holding}_performance_pretax']
-        columns += ['__SPY_performance_pretax']
-        columns += ['lev_performance_pretax']
-        cors = self.df[columns].corr()
+        summary['correlations'] = self.get_correlation_summary_data()
 
+        # get monthly holdings and return data
+        summary['monthly_data'] = self.get_monthly_returns_summaries()
 
-        monthly_data = []
-
-        self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
-        df_as_dict = self.df.to_dict('index')
-        # df_indexes = list(df.index)
-
-        for idx, date in enumerate(self.df.index):
-            if idx < self.max_lookback_months:
-                continue
-            if idx == len(df_as_dict) - 1:
-                continue
-            row = df_as_dict[date]
-
-            return_mmh_pretax = round(row[f'__{row["mmh"]}_performance_pretax'], 4)
-            return_mmh_posttax = round(row[f'__{row["mmh"]}_performance_posttax'], 4)
-            holdings = []
-            for name in [component.name for component in self.components]:
-
-                holding = {'name': name}
-                tickers = row[f'{name}_holding']
-
-                return_tickers_pretax = round(row[f'{name}_performance_pretax'], 4)
-                return_tickers_posttax = round(row[f'{name}_performance_posttax'], 4)
-
-
-                # 100% cash -> only list MMH holding and returns
-                if tickers == ['CASH']:
-                    holding['holdings'] = row['mmh']
-                    holding['pretax'] = return_mmh_pretax
-                    holding['posttax'] = return_mmh_posttax
-
-                # 50% cash -> returns 50% from tickers and 50% from mmh
-                elif len(tickers) == 2 and tickers[1] == 'CASH':
-                    holding['holdings'] = tickers
-                    holding['pretax'] = return_tickers_pretax / 2 + return_mmh_pretax / 2
-                    holding['posttax'] = return_tickers_posttax / 2 + return_mmh_posttax / 2
-
-                else:
-                    holding['holdings'] = tickers
-                    holding['pretax'] = return_tickers_pretax
-                    holding['posttax'] = return_tickers_posttax
-
-                holdings.append(holding)
-
-
-            #                 'value_start': row['prev_total'],
-            #                 'value_end': row['performance_pretax_cumulative']
-
-            monthly_data.append({
-                'date': date,
-                'holdings': holdings,
-                'value_start': row['prev_total'],
-                'value_end': row['performance_pretax_cumulative']
-            })
-
-        summary['monthly_data'] = monthly_data
-
+        for key, val in summary.items():
+            if isinstance(val, float):
+                summary[key] = round(val, 4)
         self.summary = summary
-
 
 
     @staticmethod
@@ -444,50 +382,123 @@ class DualMomentumComposite:
 
         return dd_arr, max_dd, max_dd_date
 
-    #
-    # def get_result_json(self):
-    #     """
-    #     Profiling: same issue (iterrows, row) as main dual momentum
-    #     :return:
-    #     """
-    #
-    #     import json
-    #
-    #
-    #     if self.simulation_finished:
-    #
-    #
-    #         self.df['prev_total'] = self.df.performance_pretax_cumulative.shift(1).fillna(1)
-    #
-    #
-    #
-    #         values = []
-    #         for idx, (date, row) in enumerate(self.df.iterrows()):
-    #             # skip until all dual momentum components have enough lookback data
-    #             if idx < self.max_lookback_months:
-    #                 continue
-    #             # skip last row
-    #             if idx == len(self.df) - 1:
-    #                 continue
-    #
-    #             values.append({
-    #                 'date': date,
-    #                 'value_start': row['prev_total'],
-    #                 'value_end': row['performance_pretax_cumulative']
-    #             })
-    #         return values
-    #
-    #     else:
-    #         raise ValueError("run_multi_component_dual_momentum() before get_result_json().")
+    def get_correlation_summary_data(self):
+        """
+        Get data on correlation between strategy, S&P 500, and the dm components
+        Returns data preformatted for MDB Table
+
+        :return: dict
+        """
+
+        columns_to_names = {f'{component.name}_performance_pretax': component.name for
+                            component in self.components}
+        columns_to_names['performance_strategy_pretax'] = 'Strategy'
+        columns_to_names['performance_sp500_pretax'] = 'S&P 500'
+        correlation_columns = [
+            {'label': '', 'field': 'comparison'},
+            {'label': 'Strategy', 'field': 'performance_strategy_pretax'},
+            {'label': 'S&P 500', 'field': 'performance_sp500_pretax'}
+        ]
+        correlation_columns += [
+            {'label': component.name, 'field': f'{component.name}_performance_pretax'} for
+            component in self.components
+        ]
+
+        correlations = self.df[[col['field'] for col in correlation_columns[1:]]].corr()
+        correlation_data = []
+        for _, row in correlations.iterrows():
+            # for some reason, MDB tables requires each row to be a dict. Which would be fine if
+            # it actuall used the field specified in the columns to figure out what value to
+            # display. However, instead, it just displays the value entered first at the begining,
+            # followed by the second one and so on, so they need to be added !in order! to an
+            # !unordered object! Never tell the methods...
+            row_data = {'comparison': columns_to_names[row.name]}
+            row_data.update({comp: round(row[comp], 4) for comp in row.index})
+            correlation_data.append(row_data)
+
+        return {
+            'columns': correlation_columns,
+            'data': correlation_data
+        }
+
+    def get_monthly_returns_summaries(self):
+        """
+        Returns data on components and holdings month by month
+
+        :return:
+        """
+
+        monthly_data = []
+
+        self.df['prev_total_pretax'] = self.df.performance_strategy_pretax_cumulative.shift(
+            1).fillna(1)
+        self.df['prev_total_posttax'] = self.df.performance_strategy_posttax_cumulative.shift(
+            1).fillna(1)
+        df_as_dict = self.df.to_dict('index')
+        # df_indexes = list(df.index)
+
+        for idx, date in enumerate(self.df.index):
+            if idx < self.max_lookback_months:
+                continue
+            if idx == len(df_as_dict) - 1:
+                continue
+            row = df_as_dict[date]
+
+            return_mmh_pretax = round(row[f'__{row["mmh"]}_performance_pretax'], 4)
+            return_mmh_posttax = round(row[f'__{row["mmh"]}_performance_posttax'], 4)
+
+            holdings = []
+            for name in [component.name for component in self.components]:
+
+                holding = {'name': name}
+                tickers = row[f'{name}_holding']
+
+                return_tickers_pretax = round(row[f'{name}_performance_pretax'], 4)
+                return_tickers_posttax = round(row[f'{name}_performance_posttax'], 4)
+
+
+                # 100% cash -> only list MMH holding and returns
+                if tickers == ['CASH']:
+                    holding['holdings'] = [row['mmh']]
+                    holding['pretax'] = return_mmh_pretax
+                    holding['posttax'] = return_mmh_posttax
+
+                # 50% cash -> returns 50% from tickers and 50% from mmh
+                elif len(tickers) == 2 and tickers[1] == 'CASH':
+                    holding['holdings'] = tickers
+                    holding['pretax'] = return_tickers_pretax / 2 + return_mmh_pretax / 2
+                    holding['posttax'] = return_tickers_posttax / 2 + return_mmh_posttax / 2
+
+                else:
+                    holding['holdings'] = tickers
+                    holding['pretax'] = return_tickers_pretax
+                    holding['posttax'] = return_tickers_posttax
+
+                holdings.append(holding)
+
+            monthly_data.append({
+                'date': date,
+                'date_str': datetime.datetime(date[0], date[1], 1).strftime("%b %Y"),
+                'holdings': holdings,
+                'value_start_pretax': row['prev_total_pretax'],
+                'value_start_posttax': row['prev_total_posttax'],
+                'value_end_pretax': row['performance_strategy_pretax_cumulative'],
+                'value_end_posttax': row['performance_strategy_posttax_cumulative'],
+                'value_end_spy_pretax': round(row['performance_sp500_pretax_cumulative'], 4),
+                'value_end_spy_posttax': round(row['performance_sp500_posttax_cumulative'], 4)
+            })
+
+        return monthly_data
 
 
 if __name__ == '__main__':
-
-    tax_config = {'st_gains': 0.7, 'lt_gains': 0.72, 'federal_tax_rate': 0.72,
-                  'state_tax_rate': 0.72}
+    # fed_st_gains: float, fed_lt_gains: float, state_st_gains: float,
+    # state_lt_gains: float):
+    tax_config = {'fed_st_gains': 0.22, 'fed_lt_gains': 0.15, 'state_st_gains': 0.12,
+                  'state_lt_gains': 0.051}
     # tax_config = {'st_gains': 0.0, 'lt_gains': 0.0, 'federal_tax_rate': 0.0,
     #               'state_tax_rate': 0.0}
-    money_market_holding = 'VGIT'
+    money_market_holding = 'HYD'
     start_date = '1980-01-01'
     leverage = 1
     borrowing_cost_above_libor = 1.5
@@ -498,7 +509,7 @@ if __name__ == '__main__':
             'lookback_months': 12, 'use_dual_momentum': True, 'max_holdings':2, 'weight': 0.5
         },
         {
-            'name': 'SP500',
+            'name': 'reits',
             'ticker_list': ['VNQ', 'VNQI', 'REM'],
             'lookback_months': 12, 'use_dual_momentum': True, 'max_holdings': 1, 'weight': 0.5
         }
@@ -521,6 +532,7 @@ if __name__ == '__main__':
                                force_new_data=False)
 
     dm.run_multi_component_dual_momentum()
+    dm.generate_results_summary()
     print(time.time() - s )
 
 

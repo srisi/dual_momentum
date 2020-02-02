@@ -60,12 +60,19 @@ def load_fred_data(name, return_type='dict'):
     last_month_date = today - relativedelta(months=1)
 
     if not (last_month_date.year, last_month_date.month) in data:
-        print("no last month")
-        if name == 'term_premium_10y':
-            download_term_premium_data()
+
+        # data only gets updated after weekend -> wait for 3 days and just duplicate data from
+        # previous month.
+        if today.day < 5:
+            two_months_ago = today - relativedelta(months=2)
+            data[(last_month_date.year, last_month_date.month)] = data[(two_months_ago.year,
+                                                                        two_months_ago.month)]
         else:
-            download_fred_data(index_name)
-        return load_fred_data(name)
+            if name == 'term_premium_10y':
+                download_term_premium_data()
+            else:
+                download_fred_data(index_name)
+            return load_fred_data(name)
 
     # add current month if not in data
     if not (today.year, today.month) in data:
@@ -174,4 +181,4 @@ def download_fred_data(index_name):
 
 
 if __name__ == '__main__':
-    load_fred_data('treasuries_10y_yield', return_type='df')
+    load_fred_data('tbil_rate', return_type='df')

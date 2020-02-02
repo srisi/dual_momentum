@@ -5,8 +5,8 @@ from dual_momentum.rates import get_tax_rates_by_category, get_tax_rates_by_tick
 class TestTaxRatesByTicker(unittest.TestCase):
 
     def setUp(self):
-        self.tax_config = get_tax_rates_by_category(st_gains=0.35, lt_gains=0.15,
-                                                    federal_tax_rate=0.22, state_tax_rate=0.12)
+        self.tax_config = get_tax_rates_by_category(state_st_gains=0.12, state_lt_gains=0.051,
+                                                    fed_st_gains=0.22, fed_lt_gains=0.22)
 
     def testStr(self):
         """

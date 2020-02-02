@@ -45,8 +45,6 @@ export class AutoCompleteField extends React.Component {
 
     sanitize_input_and_handle_update(reason, value) {
 
-        console.log("sanitize", reason, value);
-
         // on input, update values
         if (reason === 'input'){
             this.props.handle_holding_update(value);
@@ -112,8 +110,6 @@ export class AutoCompleteField extends React.Component {
                     popper: "ticker_selector_popper"
                 }}
                 onInputChange={(event, value, reason) => {
-                    console.log(event);
-                    console.log(value, reason);
                     this.sanitize_input_and_handle_update(reason, value);
                 }}
                 renderInput={params => (
@@ -128,35 +124,8 @@ export class AutoCompleteField extends React.Component {
                             autoComplete: 'new-password', // disable autocomplete and autofill
                         }}
                     />)}
-                // PopperComponent={{
-                //     keepMounted:true
-                // }}
             />
 
-        // <Autocomplete
-        //     id="free-solo-demo"
-        //     freeSolo={true}
-        //     // options={Object.keys(this.state.ticker_configs)}
-        //     options={Object.keys(ticker_configs)}
-        //     // options={this.state.ticker_configs.map(option => option.name)}
-        //     renderInput={params => (
-        //         <TextField {...params}
-        //             placeholder="Type a name here"
-        //             margin="normal"
-        //             variant="outlined" fullWidth
-        //             value={this.state.cur_value}
-        //             onChange={(e) => this.update_searchbar_value(e.target.value)}
-        //         />
-        //     )}
-        //     inputValue={'VTI'}
-        //     autoComplete={true}
-        //     forcePopupIcon={false}
-        //     // onChange={(_event, value) => this.props.update_searchbar_value(value)}
-        //     onInputChange={(_event, value, reason) =>
-        //         // this.autocomplete_change(value, reason)
-        //         console.log(value, reason)
-        //     }
-        // />
 
         )
     }

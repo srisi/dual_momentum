@@ -67,9 +67,13 @@ class DualMomentumComponent:
         self.weight = weight
         self.tax_config = tax_config
 
-        self.tax_rates_by_category = get_tax_rates_by_category(st_gains=tax_config['st_gains'],
-                lt_gains=tax_config['lt_gains'], federal_tax_rate=tax_config['federal_tax_rate'],
-                state_tax_rate=tax_config['state_tax_rate'])
+        self.tax_rates_by_category = get_tax_rates_by_category(
+            fed_st_gains=tax_config['fed_st_gains'], fed_lt_gains=tax_config['fed_lt_gains'],
+            state_st_gains=tax_config['state_st_gains'], state_lt_gains=tax_config[
+                'state_lt_gains'])
+            # st_gains=tax_config['st_gains'],
+            #     lt_gains=tax_config['lt_gains'], federal_tax_rate=tax_config['federal_tax_rate'],
+            #     state_tax_rate=tax_config['state_tax_rate'])
         self.tax_rates_by_ticker = get_tax_rates_by_ticker(self.tax_rates_by_category,
                                                self.ticker_list + [money_market_holding, 'TBIL'])
 
@@ -128,10 +132,10 @@ class DualMomentumComponent:
         :return:
         """
 
-        # if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
-        #     print("using cached dm component data", self.__hash__())
-        #     self.df = pd.read_pickle(self.file_path)
-        if False: pass
+        if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
+            print("using cached dm component data", self.__hash__())
+            self.df = pd.read_pickle(self.file_path)
+        # if False: pass
         else:
             # initialize df with tbil rates
             tbil_df = load_fred_data('tbil_rate', return_type='df')
