@@ -36,19 +36,8 @@ def get_test_data(request):
         tax_config = {'fed_st_gains': 0.0, 'fed_lt_gains': 0.0, 'state_st_gains': 0.0,
                       'state_lt_gains': 0.0}
 
-    # tax_config['st_gains'] = tax_config['short_term_cap_gains_rate'] / 100
-    # tax_config['lt_gains'] = tax_config['long_term_cap_gains_rate'] / 100
-    #
-    # tax_config['federal_tax_rate'] = 0.22
-    # tax_config['state_tax_rate'] = 0.12
-    #
-    # tax_config = {'st_gains': 0.35, 'lt_gains': 0.15, 'federal_tax_rate': 0.22,
-    #               'state_tax_rate': 0.12}
-
-
     parts = []
     for component in components:
-        print(component, component == {'name': ''})
         if component == {'name': ''}:
             continue
         component['ticker_list'] = [holding for holding in component['holdings'] if holding != '']
@@ -56,28 +45,29 @@ def get_test_data(request):
         component['use_dual_momentum'] = component['dual_momentum']
         parts.append(component)
 
-    print("parts", parts)
-    print(config)
-    # print(parts)
-
-    dm = DualMomentumComposite(parts=parts,
+    try:
+        dm = DualMomentumComposite(parts=parts,
                                money_market_holding=config['money_market_holding'],
                                momentum_leverages=config['momentum_leverages'],
                                tax_config=tax_config,
                                start_date=f'{config["start_year"]}-01-01',
                                leverage=config['leverage'],
                                borrowing_cost_above_libor=config['borrowing_costs_above_libor'])
-    try:
+
         dm.run_multi_component_dual_momentum()
+        dm.generate_results_summary()
+
+        config_hash = dm.__hash__()
         data = dm.summary
         error = None
     except Exception as e:
-        error = e
+        error = e.args[0]
         data = {}
+        config_hash = 0
 
     print("dual mom took ", time.time() - start)
 
-    return JsonResponse({'data': data, 'config_hash': dm.__hash__(), 'data_load_error': error})
+    return JsonResponse({'data': data, 'config_hash': config_hash, 'data_load_error': error})
 
     # with open('temp_data.json', 'r') as infile:
     #     data =  json.load(infile)

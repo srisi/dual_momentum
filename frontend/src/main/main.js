@@ -9,14 +9,14 @@ import queryString from 'query-string';
 
 // why does the commented out import not work?
 import * as json_stable_stringify from 'json-stable-stringify';
-// import {json_stable_stringify} from 'json-stable-stringify';
-
-import equal from "fast-deep-equal/es6/react";
 
 import {ReturnsChart} from "./return_chart";
+import {ReturnsSummary} from "./return_summary";
 import {AutoCompleteField} from "./autocomplete";
 
+import {ticker_configs} from "./ticker_configs";
 
+import equal from "fast-deep-equal/es6/react";
 
 import { getCookie } from '../common'
 import './main.css';
@@ -62,7 +62,6 @@ class MainInterface extends React.Component {
         }
 
 
-        {/*<div className={"col-12"}>*/}
         return(
             <div className={"row width-95"}>
                 <div className={"col-12"}>
@@ -95,7 +94,7 @@ class MainInterface extends React.Component {
                                 <AutoCompleteField
                                     ticker={this.props.config.money_market_holding}
                                     handle_holding_update={(ticker) =>
-                                        this.props.handle_config_update()}
+                                        this.props.handle_mmh_update(ticker)}
                                 />
                             </div>
                         </div>
@@ -163,6 +162,7 @@ MainInterface.propTypes={
     config: PropTypes.object.isRequired,
     handle_config_update: PropTypes.func.isRequired,
     handle_tax_rate_update: PropTypes.func.isRequired,
+    handle_mmh_update: PropTypes.func.isRequired
 };
 
 
@@ -243,7 +243,7 @@ class ComponentSelector extends React.Component {
         // Empty component Shell
         if (is_empty_component) {
             return (
-                <div className="col-xl4 col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                <div className="col-xl-6 col-lg-4 col-md-4 col-sm-6 col-xs-12">
                     {/*Title / Name*/}
                     <input className="component_title form-control component_title_new"
                         type="text" name="name" maxLength="14" size="14" disabled
@@ -287,7 +287,7 @@ class ComponentSelector extends React.Component {
             }
 
             return (
-                <div className="col-xl-4 col-lg-4 col-md-4 col-sm-6 col-xs-12 pb-2">
+                <div className="col-xl-6 col-lg-4 col-md-4 col-sm-6 col-xs-12 pb-2">
 
                     {/*Title / Name*/}
                     <input className="component_title form-control"
@@ -428,7 +428,9 @@ class MainView extends React.Component {
         super(props);
         this.state = {
             data: null,  // data for the viz
-            ticker_configs: null,
+
+            //is the current configuration valid, i.e. can we load new data with it?
+            config_is_valid: true,
             dm_config: {
 
                 'data_load_error': undefined,
@@ -439,24 +441,12 @@ class MainView extends React.Component {
                 'leverage': 1.0,
                 'borrowing_costs_above_libor': 1.5,
 
-                'simulate_taxes': false,
+                'simulate_taxes': true,
                 'tax_rates': {
                     'fed_st_gains': 22,
                     'state_st_gains':   12,
                     'fed_lt_gains': 15,
                     'state_lt_gains':   5.1,
-
-                    // 'short_term_cap_gains_rate': 34,
-                    // 'long_term_cap_gains_rate':  20.1,
-                    // 'federal_tax_rate':          22,
-                    // 'state_tax_rate':            12,
-                    // 'munis_state_rate':          12.1,
-                    // 'treasuries_income_rate':     9.82,
-                    // 'short_term_cap_gains_rate': {'name': 'Short Term Cap Gains', 'rate':34},
-                    // 'long_term_cap_gains_rate': {'name': 'Long Term Cap Gains', 'rate': 20.1},
-                    // 'munis_state_rate': {'name': 'Muni Bonds Income ', 'rate': 12.1},
-                    // 'treasuries_income_rate': {'name': 'Treasuries Income ', 'rate': 9.82},
-                    // 'gld_lt_rate': {'name': 'Gold LT Capital Gains', 'rate': 20.1},
                 },
                 'money_market_holding': 'VGIT',
                 'momentum_leverages': {
@@ -482,7 +472,7 @@ class MainView extends React.Component {
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 1,
-                    'holdings': ['VNQ', 'VNQI', 'REM', '']
+                    'holdings': ['VNQ', 'REM', '']
                 },
                 {
                     'name': 'Bonds',
@@ -490,7 +480,7 @@ class MainView extends React.Component {
                     'dual_momentum': true,
                     'lookback': 12,
                     'max_holdings': 1,
-                    'holdings': ['LQD', 'MBB', 'IEF', '']
+                    'holdings': ['LQD', 'HYG', '']
                 },
                 {
                     'name': 'Safety',
@@ -506,7 +496,6 @@ class MainView extends React.Component {
             ]
         };
         this.csrftoken = getCookie('csrftoken');
-        this.time_of_last_state_change = Date.now()
     }
 
     // shouldComponentUpdate(nextProps, nextState, nextContext) {
@@ -521,6 +510,8 @@ class MainView extends React.Component {
     }
 
     handle_config_update(event){
+
+        console.log(event);
 
         let dm_config = {... this.state.dm_config};
         const ename = event.target.name;
@@ -543,19 +534,27 @@ class MainView extends React.Component {
         this.setState({dm_config});
     }
 
+    handle_mmh_update(ticker){
+        let dm_config = {... this.state.dm_config};
+        dm_config.money_market_holding = ticker;
+        this.setState({dm_config});
+    }
+
     handle_holding_update(component_id, holding_id, ticker){
         let dm_components = [... this.state.dm_components];
         let dm_component = {... dm_components[component_id]};
         let holdings = [... dm_components[component_id]['holdings']];
-
-        console.log(holdings);
         holdings[holding_id] = ticker;
-        console.log(holdings);
 
+        console.log("t", ticker);
+        console.log(ticker_configs);
+
+        const config_is_valid = (ticker in ticker_configs || ticker === '') ?
+            this.state.config_is_valid: false;
 
         dm_component.holdings = holdings;
         dm_components[component_id] = dm_component;
-        this.setState({dm_components});
+        this.setState({dm_components, config_is_valid});
     }
 
     handle_component_update(component_id, event){
@@ -593,8 +592,13 @@ class MainView extends React.Component {
         // add new component
         if (i === 1) {
             let dm_component = {... dm_components[dm_components.length - 1]};
+            let name = dm_components[dm_components.length -1].name;
+            if (name === ''){
+                name = `Component ${dm_components.length}`
+            }
+
             dm_component = {
-                'name': dm_components[dm_components.length -1].name,
+                'name': name,
                 'weight': 0,
                 'dual_momentum': true,
                 'lookback': 12,
@@ -663,29 +667,31 @@ class MainView extends React.Component {
                 response
                     .json()
                     .then((d) => {
-                        d.data.monthly_data.forEach(element => {
-                            element.date_str = element.date;
-                            element.date_start = new Date(element.date[0], element.date[1]);
-                            element.date_end = new Date(element.date[0], element.date[1] + 1);
-                        });
-                        let dm_config = this.state.dm_config;
-                        dm_config.config_hash = d.config_hash;
-                        dm_config.data_load_error = d.data_load_error;
-                        this.setState({
-                            data : d.data,
-                            dm_config: dm_config
-                        });
 
-                        console.log("New data", d.data);
-                        return true
+                        if (!d.data_load_error) {
+                            d.data.monthly_data.forEach(element => {
+                                element.date_str = element.date;
+                                element.date_start = new Date(element.date[0], element.date[1]);
+                                element.date_end = new Date(element.date[0], element.date[1]
+                                    + 1);
+                            });
+                            let dm_config = this.state.dm_config;
+                            dm_config.config_hash = d.config_hash;
+                            dm_config.data_load_error = d.data_load_error;
+                            this.setState({
+                                data: d.data,
+                                dm_config: dm_config
+                            });
+                            return true
+                        } else{
+                            console.log("error", d.data_load_error);
+                        }
                     })
             }).catch(() => {
                 console.log("error");
                 return false
             });
-
     }
-
 
     render() {
 
@@ -716,15 +722,12 @@ class MainView extends React.Component {
                     }}
                 />
             );
-            // if(this.state.dm_components.length === 5 && component_id === 1){
-            //     dm_components.push(
-            //         <div className="w-100"/>
-            //     )
-            // }
         }
 
         return (
             <div className="container-fluid">
+                <h1 className="display-2">Dual Momentum Backtester</h1>
+
                 <div className={"row"} id={"config_and_chart_row"}>
 
                     <div className={"col-xl-6"}>
@@ -738,9 +741,9 @@ class MainView extends React.Component {
                                 handle_config_update={(e) => this.handle_config_update(e)}
                                 handle_tax_rate_update={(tax_type, rate) =>
                                     this.handle_tax_rate_update(tax_type, rate)}
+                                handle_mmh_update={(ticker) => this.handle_mmh_update(ticker)}
                             />
                         </div>
-
 
                         <div className="row mt-4 config_row" id="components_row">
                             <div className={"config_header"}>
@@ -763,9 +766,14 @@ class MainView extends React.Component {
                                 />
                             </div>
                         </div>
+                        <div id="summary_container">
+                            <ReturnsSummary
+                                data={this.state.data}
+                                simulate_taxes={this.state.dm_config.simulate_taxes}
+                            />
+                        </div>
                     </div>
                 </div>
-
             </div>
         );
     }
@@ -778,13 +786,36 @@ class MainView extends React.Component {
             'dm_components':  this.state.dm_components,
             'dm_config': this.state.dm_config
         });
-        if (old_stringified_config === cur_stringified_config) {
+        const config_is_valid = this.validate_config();
+
+        if (old_stringified_config === cur_stringified_config && config_is_valid) {
             const url_params = queryString.stringify({'conf': cur_stringified_config});
             window.history.pushState(this.state.dm_config, "",url_params);
             this.load_result_data(url_params)
         }
-
     }
+
+    validate_config(){
+        console.log(this.state.dm_components);
+        let errors = [];
+        for (const component of this.state.dm_components){
+            if (component.name === '') {continue;}
+            for (const holding of component.holdings){
+                if(!(holding in ticker_configs) && holding !== ''){
+                    errors.push(`${holding} in ${component.name} is not a valid holding.`)
+                }
+            }
+        }
+
+        if (!(this.state.dm_config.money_market_holding in ticker_configs)){
+            errors.push(`Money market holding (${this.state.dm_config.money_market_holding} is not a
+            valid holding.`)
+        }
+
+        console.log("errors", errors);
+        return (errors.length === 0)
+    }
+
 
     componentDidUpdate(prevProps, prevState, snapshot) {
 

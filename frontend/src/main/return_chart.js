@@ -47,16 +47,6 @@ export class ReturnsChart extends React.Component {
         this.yAxisGridLinesRef = React.createRef();
         this.yAxisGridLinesGenerator = null;
 
-        // the actual bars to render for the barchart (often, multiple months of data are
-        // aggregated into one bar
-        this.bars = null;
-        // multiple functions calculate the width of the bar -> better to just store it here
-        this.bar_width = null;
-
-        this.lineGenerator = d3.line();
-        this.returns_line = null;
-        this.sp500_line = null;
-
         this.returnsLineRef = React.createRef();
         this.sp500LineRef = React.createRef();
 
@@ -169,7 +159,15 @@ export class ReturnsChart extends React.Component {
         this.sp500_line_generator = this.get_line_generator('value_end_spy_posttax');
 
         this.xAxisGenerator = d3.axisBottom().scale(this.xScale)
-            .tickFormat(d3.timeFormat('%Y'));
+            .ticks(10)
+            .tickSize(20)
+            .tickFormat((d) => (this.state.zoomTransform && this.state.zoomTransform.k > 4) ?
+                d3.timeFormat('%b %Y')(d): d3.timeFormat('%Y')(d));
+        //     console.log(d, this.state.zoomTransform);
+        //     return 5;
+        // });
+
+        // d3.timeFormat('%b %Y'));
 
         // to create grid lines, we basically create an empty axis with "ticks" (i.e. the
         // lines connecting the axis to the numbers) that run across the whole chart.
@@ -179,13 +177,22 @@ export class ReturnsChart extends React.Component {
             .tickFormat('');
 
         this.yAxisGenerator = d3.axisLeft().scale(this.yScale)
-            .tickFormat(d3.format(',.0f'))
-            .ticks(2);
+            // if tick < 1, show 1 decimal point. otherwise round to full number.
+            .ticks(20, x => x < 1 ? x.toFixed(1) : x.toFixed(0));
         this.yAxisGridLinesGenerator = d3.axisLeft().scale(this.yScale)
             .tickSize(-this.graph_width + this.margin.left + this.margin.right)
             .ticks(2)
             .tickFormat('');
     }
+
+
+    // format_x_ticks(x) {
+    //     return x < 1 ? x.toFixed(1) : x.toFixed(0);
+    //     // console.log(x);
+    //     // const e = Math.log10(x);
+    //     // if (e !== Math.floor(e)) return; // Ignore non-exact power of ten.
+    //     // return `10${(e + "").replace(/./g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"[c] || "⁻")}`;
+    // }
 
     get_line_generator(return_field_name){
         return d3.line()

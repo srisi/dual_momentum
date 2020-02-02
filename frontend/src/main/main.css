@@ -2,6 +2,10 @@ html {
     font-size: 75%;
 }
 
+.display-2{
+    text-align: center;
+}
+
 .config_row{
     margin-left: 0px;
     background: #f3f3f3;

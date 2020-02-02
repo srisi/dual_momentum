@@ -132,10 +132,10 @@ class DualMomentumComponent:
         :return:
         """
 
-        # if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
-        #     print("using cached dm component data", self.__hash__())
-        #     self.df = pd.read_pickle(self.file_path)
-        if False: pass
+        if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
+            print("using cached dm component data", self.__hash__())
+            self.df = pd.read_pickle(self.file_path)
+        # if False: pass
         else:
             # initialize df with tbil rates
             tbil_df = load_fred_data('tbil_rate', return_type='df')
