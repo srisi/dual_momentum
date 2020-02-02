@@ -43,6 +43,8 @@ def get_test_data(request):
         component['ticker_list'] = [holding for holding in component['holdings'] if holding != '']
         component['lookback_months'] = component['lookback']
         component['use_dual_momentum'] = component['dual_momentum']
+        if not component['use_dual_momentum']:
+            component['ticker_list'] = [component['ticker_list'][0]]
         parts.append(component)
 
     try:

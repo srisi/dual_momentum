@@ -385,11 +385,6 @@ class ChartTooltip extends React.Component{
             const date_start = data.date_start
                 .toLocaleDateString('en-US', {month: 'short', year:'numeric'});
 
-            // // period ends on previous month, not current month
-            // const date_month_to_last = new Date(data.date_end);
-            // date_month_to_last.setMonth(data.date_end.getMonth() - 1);
-            // const date_end = date_month_to_last
-            //     .toLocaleDateString('en-US', {month: 'long', year:'numeric'});
             const pl_percent = (((data.value_end_pretax / data.value_start_pretax) - 1) *
                 100).toFixed(3) +"%";
 
@@ -397,7 +392,7 @@ class ChartTooltip extends React.Component{
             for (const holding of this.props.tooltip_data.holdings){
                 holdings.push(
                     <tr key={holding.name}>
-                        <td>{holding.holdings}</td>
+                        <td>{holding.holdings.join(", ")}</td>
                         <td className={"returns_col"}>
                             {((holding.pretax - 1) * 100).toFixed(3) + "%"}
                         </td>
@@ -429,6 +424,5 @@ class ChartTooltip extends React.Component{
     }
 }
 ChartTooltip.propTypes = {
-    tooltip_data: PropTypes.object,
-    // highlighted_idx: PropTypes.number
+    tooltip_data: PropTypes.object
 };

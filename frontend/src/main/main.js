@@ -4,10 +4,8 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-
 import queryString from 'query-string';
 
-// why does the commented out import not work?
 import * as json_stable_stringify from 'json-stable-stringify';
 
 import {ReturnsChart} from "./return_chart";
@@ -60,7 +58,6 @@ class MainInterface extends React.Component {
                 </div>
             ];
         }
-
 
         return(
             <div className={"row width-95"}>
@@ -498,13 +495,6 @@ class MainView extends React.Component {
         this.csrftoken = getCookie('csrftoken');
     }
 
-    // shouldComponentUpdate(nextProps, nextState, nextContext) {
-    //
-    //     console.log("shouldUpdate",
-    //         this.state.dm_components[0].holdings, nextState.dm_components[0].holdings);
-    //     return true
-    // }
-
     componentDidMount() {
         this.load_result_data();
     }
@@ -558,8 +548,6 @@ class MainView extends React.Component {
     }
 
     handle_component_update(component_id, event){
-        console.log("handle component update", component_id, event.target);
-
         if (event.target.name === 'add_component'){
             this.modify_number_of_components(1, null);
         } else {
@@ -781,7 +769,6 @@ class MainView extends React.Component {
 
     update_url_if_no_change_after_2seconds(old_stringified_config){
 
-
         let cur_stringified_config = json_stable_stringify({
             'dm_components':  this.state.dm_components,
             'dm_config': this.state.dm_config
@@ -796,7 +783,6 @@ class MainView extends React.Component {
     }
 
     validate_config(){
-        console.log(this.state.dm_components);
         let errors = [];
         for (const component of this.state.dm_components){
             if (component.name === '') {continue;}
@@ -816,10 +802,7 @@ class MainView extends React.Component {
         return (errors.length === 0)
     }
 
-
     componentDidUpdate(prevProps, prevState, snapshot) {
-
-
         // config has changed if either dm_components or dm_config has change
         const dm_config_has_changed = (
             !equal(prevState.dm_components, this.state.dm_components) ||
@@ -837,8 +820,6 @@ class MainView extends React.Component {
                 this.update_url_if_no_change_after_2seconds(stringified_config)
             }, 2000);
         }
-
-
     }
 }
 

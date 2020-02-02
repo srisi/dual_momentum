@@ -20,8 +20,6 @@ export class ReturnsSummary extends React.Component {
     }
 
     render() {
-        console.log("data", this.props.data);
-
         if (!this.props.data) {
             return (<div/>);
         } else {
@@ -83,7 +81,6 @@ export class ReturnsSummary extends React.Component {
                 for (const component of d.monthly_data[0].holdings){
                     component_names.push(component.name);
                 }
-                console.log(component_names);
 
                 const columns = [
                     {'label': 'Date', 'field': 'date', 'sort': 'desc'},
