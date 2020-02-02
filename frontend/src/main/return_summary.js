@@ -98,7 +98,7 @@ export class ReturnsSummary extends React.Component {
                     let data_row = {
                         'date': row.date_start.toLocaleDateString('en-US',
                             {month: 'short', year:'numeric'}),
-                        'returns': (((row.value_end_posttax / row.value_start_posttax) - 1) *
+                        'returns': (((row.value_end_pretax / row.value_start_pretax) - 1) *
                              100).toFixed(3) +"%",
                     };
                     for (const component of row.holdings){

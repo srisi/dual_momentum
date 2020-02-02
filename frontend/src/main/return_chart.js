@@ -163,11 +163,6 @@ export class ReturnsChart extends React.Component {
             .tickSize(20)
             .tickFormat((d) => (this.state.zoomTransform && this.state.zoomTransform.k > 4) ?
                 d3.timeFormat('%b %Y')(d): d3.timeFormat('%Y')(d));
-        //     console.log(d, this.state.zoomTransform);
-        //     return 5;
-        // });
-
-        // d3.timeFormat('%b %Y'));
 
         // to create grid lines, we basically create an empty axis with "ticks" (i.e. the
         // lines connecting the axis to the numbers) that run across the whole chart.
@@ -184,15 +179,6 @@ export class ReturnsChart extends React.Component {
             .ticks(2)
             .tickFormat('');
     }
-
-
-    // format_x_ticks(x) {
-    //     return x < 1 ? x.toFixed(1) : x.toFixed(0);
-    //     // console.log(x);
-    //     // const e = Math.log10(x);
-    //     // if (e !== Math.floor(e)) return; // Ignore non-exact power of ten.
-    //     // return `10${(e + "").replace(/./g, c => "⁰¹²³⁴⁵⁶⁷⁸⁹"[c] || "⁻")}`;
-    // }
 
     get_line_generator(return_field_name){
         return d3.line()
@@ -404,7 +390,8 @@ class ChartTooltip extends React.Component{
             // date_month_to_last.setMonth(data.date_end.getMonth() - 1);
             // const date_end = date_month_to_last
             //     .toLocaleDateString('en-US', {month: 'long', year:'numeric'});
-            const pl_percent = (((data.value_end_posttax / data.value_start_posttax) - 1) * 100).toFixed(3) +"%";
+            const pl_percent = (((data.value_end_pretax / data.value_start_pretax) - 1) *
+                100).toFixed(3) +"%";
 
             let holdings = [];
             for (const holding of this.props.tooltip_data.holdings){
@@ -412,7 +399,7 @@ class ChartTooltip extends React.Component{
                     <tr key={holding.name}>
                         <td>{holding.holdings}</td>
                         <td className={"returns_col"}>
-                            {((holding.posttax - 1) * 100).toFixed(3) + "%"}
+                            {((holding.pretax - 1) * 100).toFixed(3) + "%"}
                         </td>
                     </tr>)
             }
