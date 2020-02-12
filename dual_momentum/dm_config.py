@@ -1,7 +1,7 @@
 from pathlib import Path
+import socket
 
-# DATA_PATH = Path ('..', 'data')
-
-print(Path(__file__).parent.parent)
-
-DATA_PATH = Path(Path(__file__).parent.parent, 'data')
+if socket.gethostname() == 'Stephans-MacBook-Pro.local':
+    DATA_PATH = Path('/dual_momentum_data')
+else:
+    DATA_PATH = Path(Path(__file__).parent.parent, 'data')

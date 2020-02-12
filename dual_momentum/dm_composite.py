@@ -25,7 +25,8 @@ class DualMomentumComposite:
     def __init__(self, parts: list, money_market_holding: str, momentum_leverages: dict,
                  tax_config: dict, start_date: str, leverage: float,
                  borrowing_cost_above_libor: float,
-                 force_new_data: bool = False):
+                 force_new_data: bool=False, is_backtest=False,
+                 libor_rates=None):
 
 
         if abs(sum([x['weight'] for x in parts]) - 1) > 0.0001:
@@ -41,6 +42,8 @@ class DualMomentumComposite:
         if leverage > 1 and (borrowing_cost_above_libor is None or borrowing_cost_above_libor < 0):
             raise ValueError(f'If using leverage, borrowing_cost_above_libor needs to be a float, '
                              f'e.g. 1.5 -> 1.5% above libor. Current: {borrowing_cost_above_libor}')
+
+        self.is_backtest = is_backtest
 
         self.force_new_data = force_new_data
         self.components = []
@@ -71,7 +74,10 @@ class DualMomentumComposite:
         self.leverage = leverage
         self.borrowing_cost_above_libor = borrowing_cost_above_libor
 
-        self.libor = load_fred_data('libor_rate')
+        if libor_rates:
+            self.libor = libor_rates
+        else:
+            self.libor = load_fred_data('libor_rate')
 
         self.simulation_finished = False
         self.summary = None
@@ -150,6 +156,14 @@ class DualMomentumComposite:
         mp_results_queue.put(True)
 
     def run_multi_component_dual_momentum(self):
+        """
+        Runs dual momentum simulation with multiple components
+
+        :param preload_in_parallel: bool, if True, will preload all tickers from disk or yahoo
+                                          in parallel rather than loading them later sequentially
+
+        :return:
+        """
 
 
         if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
@@ -160,7 +174,9 @@ class DualMomentumComposite:
         else:
 
             start_time = time.time()
-            self.preload_data_in_parallel()
+
+            if not self.is_backtest:
+                self.preload_data_in_parallel()
             self.df = TickerData('ONES').data_monthly
             df = self.df
             df.drop(['Adj Close', 'Close'], inplace=True, axis=1)
@@ -169,7 +185,13 @@ class DualMomentumComposite:
             df['taxes'] = 0.0
 
             # each money market holding works like a buy and hold component
-            for mm_holding in {'TLT', 'VGIT', 'SPY', self.money_market_holding}:
+
+            if self.is_backtest:
+                mmhs = {'SPY', self.money_market_holding}
+            else:
+                mmhs = {'TLT', 'VGIT', 'SPY', self.money_market_holding}
+
+            for mm_holding in mmhs:
                 component = DualMomentumComponent(
                     name=f'__{mm_holding}', ticker_list=[mm_holding], tax_config=self.tax_config,
                     lookback_months=12, max_holdings=1, use_dual_momentum=False, start_date=self.start_date,
@@ -195,8 +217,6 @@ class DualMomentumComposite:
                 df['performance_pretax'] += component.weight * component.df['performance_pretax']
                 df['taxes'] += component.weight * component.df['taxes']
                 df['cash_portion'] += component.weight * component.df['cash_portion']
-
-
 
             df['leverage'] = 0.0
             # df['cash'] = 0.0
@@ -299,6 +319,7 @@ class DualMomentumComposite:
         self.simulation_finished = True
         return self.df
 
+
     def generate_results_summary(self):
 
         summary = {}
@@ -309,7 +330,12 @@ class DualMomentumComposite:
         self.df['performance_sp500_pretax'] = self.df['__SPY_performance_pretax']
         self.df['performance_sp500_posttax'] = self.df['__SPY_performance_posttax']
 
-        for name in ['strategy', 'sp500']:
+
+        if self.is_backtest:
+            parts_to_process = ['strategy']
+        else:
+            parts_to_process = ['strategy', 'sp500']
+        for name in parts_to_process:
             for tax_type in ['pretax', 'posttax']:
                 self.df[f'performance_{name}_{tax_type}_cumulative'] = np.cumprod(self.df[
                                                               f'performance_{name}_{tax_type}'])
@@ -349,7 +375,8 @@ class DualMomentumComposite:
         summary['correlations'] = self.get_correlation_summary_data()
 
         # get monthly holdings and return data
-        summary['monthly_data'] = self.get_monthly_returns_summaries()
+        if not self.is_backtest:
+            summary['monthly_data'] = self.get_monthly_returns_summaries()
 
         for key, val in summary.items():
             if isinstance(val, float):
@@ -490,6 +517,17 @@ class DualMomentumComposite:
 
         return monthly_data
 
+    def print_results_summary(self):
+        """
+        Prints a short summary of the results
+        :return:
+        """
+        for key in [
+            'max_dd_strategy_posttax', 'max_dd_date_strategy_pretax_str',
+            'cagr_strategy_posttax', 'sharpe_strategy', 'sortino_strategy'
+        ]:
+            print('{:35s}: {}'.format(key, self.summary[key]))
+
 
 if __name__ == '__main__':
     # fed_st_gains: float, fed_lt_gains: float, state_st_gains: float,
@@ -498,20 +536,25 @@ if __name__ == '__main__':
                   'state_lt_gains': 0.051}
     # tax_config = {'st_gains': 0.0, 'lt_gains': 0.0, 'federal_tax_rate': 0.0,
     #               'state_tax_rate': 0.0}
-    money_market_holding = 'HYD'
+    money_market_holding = 'VGIT'
     start_date = '1980-01-01'
     leverage = 1
     borrowing_cost_above_libor = 1.5
     parts = [
         {
-            'name': 'equities',
-            'ticker_list': ['VTI', 'QQQ', 'IEMG', 'IEFA'],
-            'lookback_months': 12, 'use_dual_momentum': True, 'max_holdings':2, 'weight': 0.5
+            'name': 'sortino',
+            'ticker_list': ['BNDX', 'HYD', 'HYG', 'MBB', 'SHY', 'TIP', 'VCSH'],
+            'lookback_months': 6, 'use_dual_momentum': True, 'max_holdings':2, 'weight': 0.34
         },
         {
-            'name': 'reits',
-            'ticker_list': ['VNQ', 'VNQI', 'REM'],
-            'lookback_months': 12, 'use_dual_momentum': True, 'max_holdings': 1, 'weight': 0.5
+            'name': 'sharpe',
+            'ticker_list': ['BNDX', 'HYG', 'MBB', 'VCSH'],
+            'lookback_months': 6, 'use_dual_momentum': True, 'max_holdings': 1, 'weight': 0.33
+        },
+        {
+            'name': 'cagr',
+            'ticker_list': ['BNDX', 'HYD', 'HYG', 'TIP'],
+            'lookback_months': 6, 'use_dual_momentum': True, 'max_holdings': 1, 'weight': 0.33
         }
     ]
 
@@ -533,6 +576,7 @@ if __name__ == '__main__':
 
     dm.run_multi_component_dual_momentum()
     dm.generate_results_summary()
+    dm.print_results_summary()
     print(time.time() - s )
 
 

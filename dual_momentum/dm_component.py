@@ -123,7 +123,6 @@ class DualMomentumComponent:
 
         return Path(DATA_PATH, 'dm_component_data', f'{self.__hash__()}.pickle')
 
-    # @profile
     def run_dual_momentum(self):
         """
         Runs a dual-momentum backtest
@@ -133,7 +132,7 @@ class DualMomentumComponent:
         """
 
         if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
-            print("using cached dm component data", self.__hash__())
+            # print("using cached dm component data", self.__hash__())
             self.df = pd.read_pickle(self.file_path)
         # if False: pass
         else:
