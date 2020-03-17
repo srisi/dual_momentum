@@ -1,6 +1,7 @@
-import pandas as pd
 import pyarrow as pa
 import redis
+
+from IPython import embed
 
 """
 Timing Notes:
@@ -26,8 +27,6 @@ def write_to_redis(key: str, value, expiration: int = 3600):
     :return:
     """
 
-    print(f'Writing to redis. {key}. {expiration}. {value}')
-
     redis_con = redis.Redis(host='localhost', port=6379, db=0)
     context = pa.default_serialization_context()
     val_serialized = context.serialize(value).to_buffer().to_pybytes()
@@ -50,7 +49,3 @@ def read_from_redis(key: str):
         return context.deserialize(val_serialized)
     else:
         return None
-
-
-
-

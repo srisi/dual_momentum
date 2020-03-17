@@ -9,6 +9,7 @@ from dual_momentum.ticker_config import TICKER_CONFIG
 from dual_momentum.ticker_data import TickerData
 import multiprocessing
 import datetime
+import time
 
 from dual_momentum.storage import write_to_redis, read_from_redis
 
@@ -69,8 +70,6 @@ class DualMomentumComposite:
         self.start_date = start_date
         self.leverage = leverage
         self.borrowing_cost_above_libor = borrowing_cost_above_libor
-
-        self.libor = load_fred_data('libor_rate')
 
         self.simulation_finished = False
         self.summary = None
@@ -161,6 +160,9 @@ class DualMomentumComposite:
             return self.df
         else:
             start_time = time.time()
+            self.libor = load_fred_data('libor_rate', return_type='dict')
+
+
             self.preload_data_in_parallel()
             self.df = TickerData('ONES').data_monthly
             df = self.df
@@ -287,6 +289,11 @@ class DualMomentumComposite:
 
     def generate_results_summary(self):
 
+
+        self.summary = read_from_redis(f'summary_{self.__hash__()}')
+        if self.summary:
+            return
+
         summary = {}
 
         self.df['performance_strategy_pretax'] = self.df['lev_performance_pretax']
@@ -341,6 +348,8 @@ class DualMomentumComposite:
             if isinstance(val, float):
                 summary[key] = round(val, 4)
         self.summary = summary
+
+        write_to_redis(key=f'summary_{self.__hash__()}', value=summary, expiration=3600)
 
 
     @staticmethod
@@ -484,7 +493,7 @@ if __name__ == '__main__':
                   'state_lt_gains': 0.051}
     # tax_config = {'st_gains': 0.0, 'lt_gains': 0.0, 'federal_tax_rate': 0.0,
     #               'state_tax_rate': 0.0}
-    money_market_holding = 'HYD'
+    money_market_holding = 'VGIT'
     start_date = '1980-01-01'
     leverage = 1
     borrowing_cost_above_libor = 1.5
@@ -520,9 +529,9 @@ if __name__ == '__main__':
     dm.run_multi_component_dual_momentum()
     dm.generate_results_summary()
 
-    embed()
 
     print(time.time() - s )
 
+    embed()
 
 

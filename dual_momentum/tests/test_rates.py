@@ -3,6 +3,9 @@ from dual_momentum.rates import get_tax_rates_by_category, get_tax_rates_by_tick
 
 
 class TestTaxRatesByTicker(unittest.TestCase):
+    """
+    Test if passing dict or string with tax config works
+    """
 
     def setUp(self):
         self.tax_config = get_tax_rates_by_category(state_st_gains=0.12, state_lt_gains=0.051,

@@ -4,11 +4,17 @@ import numpy as np
 from dual_momentum.ticker_data import TickerData
 from dual_momentum.ticker_config import TICKER_CONFIG
 from IPython import embed
+import pandas as pd
+
+import redis
 
 
 class TestTickerMerge(unittest.TestCase):
 
     def setUp(self) -> None:
+
+        self.redis_con = redis.Redis(host='localhost', port=6379, db=1)
+        self.redis_con.flushall()
 
         for ticker, early_replacement in [
             ('SPY', 'VFINX'),
@@ -23,6 +29,9 @@ class TestTickerMerge(unittest.TestCase):
 
             self.test_using_replacements_works()
             self.test_merge()
+
+    def tearDown(self):
+        self.redis_con.flushall()
 
     def test_using_replacements_works(self):
         """
@@ -69,10 +78,20 @@ class TestTickerMerge(unittest.TestCase):
 class TestTickerConfig(unittest.TestCase):
     """
     Test if the configuration for each ticker in ticker_config is complete
+    test if all tickers can be loaded
 
     """
+    def setUp(self):
+        self.redis_con = redis.Redis(host='localhost', port=6379, db=1)
+        self.redis_con.flushall()
+
+    def tearDown(self):
+        self.redis_con.flushall()
 
     def test_all_keys_available_and_correct(self):
+        """
+        Test if the config for all tickers is complete
+        """
         for ticker in TICKER_CONFIG:
 
             ticker_data = TICKER_CONFIG[ticker]
@@ -91,13 +110,26 @@ class TestTickerConfig(unittest.TestCase):
             self.assertTrue(ticker_data['suggest_in_search'] in {True, False})
 
             index_replacements = [None, 'alpha_architect.csv', 'eq_reit.csv', 'eq_vmot.csv',
-                                  ]
+                                  'mortgage_reit.csv', 'gold_bullion.csv']
             self.assertTrue(ticker_data['early_monthly_index_replacement'] in index_replacements)
 
             from dual_momentum.rates import get_tax_rates_by_category
             tax_categories = get_tax_rates_by_category(0, 0, 0, 0)
             self.assertTrue(ticker_data['tax_category'] in tax_categories)
 
+    def test_load_all_tickers(self):
+        """
+        Test if all tickers can be loaded from yahoo
+        """
+        for ticker in TICKER_CONFIG:
+            if ticker == 'TBIL':
+                continue
+            loaded_ticker_data = TickerData(ticker)
+            self.assertTrue(isinstance(loaded_ticker_data.data_daily, pd.DataFrame))
+            self.assertGreater(len(loaded_ticker_data.data_daily), 4)
+
+            self.assertTrue(isinstance(loaded_ticker_data.data_monthly, pd.DataFrame))
+            self.assertGreater(len(loaded_ticker_data.data_monthly), 4)
 
 
 if __name__ == '__main__':

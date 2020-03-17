@@ -442,15 +442,14 @@ class DualMomentumComponent:
 
 if __name__ == '__main__':
     ticker_list = ['VNQ', 'VNQI', 'IEF']
-    tax_config = {'st_gains': 0.7, 'lt_gains': 0.7, 'federal_tax_rate': 0.7,
-                   'state_tax_rate': 0.7}
-    tax_config = {'st_gains': 0.0, 'lt_gains': 0.00, 'federal_tax_rate': 0.00,
-                   'state_tax_rate': 0.00}
+    tax_config = {'fed_st_gains': 0.22, 'fed_lt_gains': 0.15, 'state_st_gains': 0.12,
+                  'state_lt_gains': 0.051}
     dmc = DualMomentumComponent(name='equities', ticker_list=ticker_list, lookback_months=12,
                                 max_holdings=2, start_date='1980-01-01', use_dual_momentum=True,
                                 money_market_holding='VGIT', tax_config=tax_config)
 
     dmc.run_dual_momentum()
+    embed()
 
     dmc.df['performance_pretax_cumulative'] = np.cumprod(dmc.df['performance_pretax'])
     dmc.df['performance_posttax_cumulative'] = np.cumprod(dmc.df['performance_posttax'])
