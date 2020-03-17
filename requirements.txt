@@ -11,3 +11,4 @@ numpy
 pandas
 pandas_datareader
 pyarrow
+redis

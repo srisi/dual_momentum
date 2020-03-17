@@ -9,9 +9,7 @@ import pandas as pd
 import pandas_datareader as pdr
 import pandas_datareader.data as web
 from IPython import embed
-from dual_momentum.dm_config import DATA_PATH
 from dual_momentum.ticker_config import TICKER_CONFIG
-from dual_momentum.utilities import file_exists_and_less_than_1hr_old, file_exists_and_is_from_today
 
 
 class TickerData:
@@ -105,7 +103,6 @@ class TickerData:
 
         return self._data_monthly
 
-
     def __eq__(self, other):
         return (
             self.ticker == other.ticker and
@@ -144,7 +141,6 @@ class TickerData:
         """
         return Path(DATA_PATH, 'ticker_data_raw_yahoo', f'{self.ticker}.pickle')
 
-
     def load_ticker_data(self):
         """
         Load the daily data for one ticker including early replacements where necessary.
@@ -167,7 +163,6 @@ class TickerData:
             if self.use_early_replacements and self.early_replacement:
                 self.merge_daily_data_with_early_replacements()
 
-
     def merge_daily_data_with_early_replacements(self):
         """
         Merges a ticker with its earlier replacements going back to 1980 where possible
@@ -189,7 +184,6 @@ class TickerData:
         early_stock_data = early_stock_data[:first_date][:-1]
         self._data_daily = early_stock_data.append(self._data_daily[first_date:], sort=True)
         self._data_daily = self._data_daily['1980-01-01':]
-
 
     def merge_monthly_data_with_index(self, index_csv_name: str):
         """
@@ -223,7 +217,6 @@ class TickerData:
 
         self._data_monthly = merged_monthly_data
 
-
     def load_raw_data_or_get_from_yahoo(self):
         """
         Loads raw yahoo ticker data either from disk or from yahoo
@@ -240,7 +233,7 @@ class TickerData:
              file_exists_and_is_from_today(self.file_path_raw_yahoo_data))
         ):
             print(self.ticker, "disk")
-            stock_data =  pd.read_pickle(self.file_path_raw_yahoo_data)
+            stock_data = pd.read_pickle(self.file_path_raw_yahoo_data)
 
         else:
             print(self.ticker, "yahoo")

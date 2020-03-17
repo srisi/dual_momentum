@@ -5,8 +5,8 @@ import re
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from dual_momentum.dm_config import DATA_PATH
-from dual_momentum.utilities import file_exists_and_less_than_1hr_old
+from dual_momentum.storage import write_to_redis, read_from_redis
+
 
 import hashlib
 
@@ -112,16 +112,15 @@ class DualMomentumComponent:
         md5 = hashlib.md5(string_to_hash.encode('utf8')).hexdigest()
         return md5
 
-
-    @property
-    def file_path(self):
-        """
-        filepath for the simulated pickle file
-
-        :return:
-        """
-
-        return Path(DATA_PATH, 'dm_component_data', f'{self.__hash__()}.pickle')
+    # @property
+    # def file_path(self):
+    #     """
+    #     filepath for the simulated pickle file
+    #
+    #     :return:
+    #     """
+    #
+    #     return Path(DATA_PATH, 'dm_component_data', f'{self.__hash__()}.pickle')
 
     # @profile
     def run_dual_momentum(self):
@@ -132,10 +131,14 @@ class DualMomentumComponent:
         :return:
         """
 
-        if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
-            print("using cached dm component data", self.__hash__())
-            self.df = pd.read_pickle(self.file_path)
-        # if False: pass
+        self.df = None
+        if not self.force_new_data:
+            self.df = read_from_redis(key=self.__hash__())
+
+        # if cached simulation available, use it
+        if self.df is not None:
+            return self.df
+
         else:
             # initialize df with tbil rates
             tbil_df = load_fred_data('tbil_rate', return_type='df')
@@ -178,7 +181,8 @@ class DualMomentumComponent:
 
             # finally turn the dict back into a df
             self.df = pd.DataFrame.from_dict(self.df_as_dict, orient='index')
-            self.df.to_pickle(self.file_path)
+
+            write_to_redis(key=self.__hash__(), value=self.df, expiration=3600)
 
         return self.df
 

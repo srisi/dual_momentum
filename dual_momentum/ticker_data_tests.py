@@ -67,6 +67,10 @@ class TestTickerMerge(unittest.TestCase):
             self.assertTrue(np.allclose(ret_old, ret_merged))
 
 class TestTickerConfig(unittest.TestCase):
+    """
+    Test if the configuration for each ticker in ticker_config is complete
+
+    """
 
     def test_all_keys_available_and_correct(self):
         for ticker in TICKER_CONFIG:
@@ -94,13 +98,6 @@ class TestTickerConfig(unittest.TestCase):
             tax_categories = get_tax_rates_by_category(0, 0, 0, 0)
             self.assertTrue(ticker_data['tax_category'] in tax_categories)
 
-
-            #     'name': 'Ones',
-            #     'start_year': 1980,
-            #     'early_replacement': None,
-            #     'early_monthly_index_replacement': None,
-            #     'suggest_in_search': False,
-            #     'tax_category': 'equities'
 
 
 if __name__ == '__main__':
