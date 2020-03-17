@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 import requests
 import pandas as pd
 from dual_momentum.dm_config import DATA_PATH
-from dual_momentum.ticker_data import TickerData
+from dual_momentum.storage import read_from_redis, write_to_redis
 
 
 def load_fred_data(name, return_type='dict'):
@@ -15,6 +15,10 @@ def load_fred_data(name, return_type='dict'):
     :param name:
     :return:
     """
+    data = read_from_redis(key=f'{name}_{return_type}')
+    if data is not None:
+        print("cache", name, return_type)
+        return data
 
     index_names = {
         'libor_rate':           'USDONTD156N',      # overnight libor
@@ -22,10 +26,12 @@ def load_fred_data(name, return_type='dict'):
         'term_premium_10y':     'ACMTP10',          # 10 year term premium
         'treasuries_10y_yield': 'GS10'              # 10 year constant maturity yield
     }
+    # add secondary mapping to allow lookup by values
+    for n in list(index_names.values()):
+        index_names[n] = n
 
     if name not in index_names:
         raise ValueError(f'Only {index_names.keys()} can be loaded with load_fred_data, not {name}.')
-
 
     index_name = index_names[name]
 
@@ -35,6 +41,31 @@ def load_fred_data(name, return_type='dict'):
             download_term_premium_data()
         else:
             download_fred_data(index_name)
+            print("downloading update")
+
+    data = parse_index_data(file_path, index_name)
+    df = parse_data_into_dataframe(file_path, index_name)
+
+    write_to_redis(key=f'{name}_df', value=df, expiration=3600 * 24)
+    write_to_redis(key=f'{name}_dict', value=data, expiration=3600 * 24)
+
+    if return_type == 'dict':
+        return data
+    # pandas dataframe
+    elif return_type == 'df':
+        return df
+    else:
+        raise ValueError(f"return_type for load_fred_data has to be 'dict' or 'df' but not "
+                         f"{return_type}.")
+
+
+def parse_index_data(file_path, index_name):
+    """
+    Given a downloaded index file, parses the data into the usual format for this library
+
+    :param file_path:
+    :return:
+    """
 
     data = {}
     with open(file_path) as csvfile:
@@ -59,36 +90,29 @@ def load_fred_data(name, return_type='dict'):
     today = datetime.datetime.today()
     last_month_date = today - relativedelta(months=1)
 
+    # data only gets updated after weekend -> wait for 3 days and just duplicate data from
+    # previous month.
     if not (last_month_date.year, last_month_date.month) in data:
-
-        # data only gets updated after weekend -> wait for 3 days and just duplicate data from
-        # previous month.
         if today.day < 5:
             two_months_ago = today - relativedelta(months=2)
             data[(last_month_date.year, last_month_date.month)] = data[(two_months_ago.year,
                                                                         two_months_ago.month)]
         else:
-            if name == 'term_premium_10y':
+            if index_name == 'ACMTP10':
                 download_term_premium_data()
             else:
                 download_fred_data(index_name)
-            return load_fred_data(name)
+            return load_fred_data(index_name)
 
     # add current month if not in data
     if not (today.year, today.month) in data:
         data[(today.year, today.month)] = data[(last_month_date.year, last_month_date.month)]
 
-    if name == 'libor_rate':
+    # for libor rates, add pre 2001 values
+    if index_name == 'USDONTD156N':
         data = add_libor_rates_before_2001(data)
 
-    if return_type == 'dict':
-        return data
-    # pandas dataframe
-    elif return_type == 'df':
-        return parse_data_into_dataframe(file_path, index_name)
-    else:
-        raise ValueError(f"return_type for load_fred_data has to be 'dict' or 'df' but not "
-                         f"{return_type}.")
+    return data
 
 
 def parse_data_into_dataframe(file_path, index_name):

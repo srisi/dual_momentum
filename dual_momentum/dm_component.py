@@ -5,8 +5,8 @@ import re
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from dual_momentum.dm_config import DATA_PATH
-from dual_momentum.utilities import file_exists_and_less_than_1hr_old
+from dual_momentum.storage import write_to_redis, read_from_redis
+
 
 import hashlib
 
@@ -112,16 +112,15 @@ class DualMomentumComponent:
         md5 = hashlib.md5(string_to_hash.encode('utf8')).hexdigest()
         return md5
 
-
-    @property
-    def file_path(self):
-        """
-        filepath for the simulated pickle file
-
-        :return:
-        """
-
-        return Path(DATA_PATH, 'dm_component_data', f'{self.__hash__()}.pickle')
+    # @property
+    # def file_path(self):
+    #     """
+    #     filepath for the simulated pickle file
+    #
+    #     :return:
+    #     """
+    #
+    #     return Path(DATA_PATH, 'dm_component_data', f'{self.__hash__()}.pickle')
 
     # @profile
     def run_dual_momentum(self):
@@ -132,10 +131,14 @@ class DualMomentumComponent:
         :return:
         """
 
-        if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
-            print("using cached dm component data", self.__hash__())
-            self.df = pd.read_pickle(self.file_path)
-        # if False: pass
+        self.df = None
+        if not self.force_new_data:
+            self.df = read_from_redis(key=self.__hash__())
+
+        # if cached simulation available, use it
+        if self.df is not None:
+            return self.df
+
         else:
             # initialize df with tbil rates
             tbil_df = load_fred_data('tbil_rate', return_type='df')
@@ -178,7 +181,8 @@ class DualMomentumComponent:
 
             # finally turn the dict back into a df
             self.df = pd.DataFrame.from_dict(self.df_as_dict, orient='index')
-            self.df.to_pickle(self.file_path)
+
+            write_to_redis(key=self.__hash__(), value=self.df, expiration=3600)
 
         return self.df
 
@@ -438,15 +442,14 @@ class DualMomentumComponent:
 
 if __name__ == '__main__':
     ticker_list = ['VNQ', 'VNQI', 'IEF']
-    tax_config = {'st_gains': 0.7, 'lt_gains': 0.7, 'federal_tax_rate': 0.7,
-                   'state_tax_rate': 0.7}
-    tax_config = {'st_gains': 0.0, 'lt_gains': 0.00, 'federal_tax_rate': 0.00,
-                   'state_tax_rate': 0.00}
+    tax_config = {'fed_st_gains': 0.22, 'fed_lt_gains': 0.15, 'state_st_gains': 0.12,
+                  'state_lt_gains': 0.051}
     dmc = DualMomentumComponent(name='equities', ticker_list=ticker_list, lookback_months=12,
                                 max_holdings=2, start_date='1980-01-01', use_dual_momentum=True,
                                 money_market_holding='VGIT', tax_config=tax_config)
 
     dmc.run_dual_momentum()
+    embed()
 
     dmc.df['performance_pretax_cumulative'] = np.cumprod(dmc.df['performance_pretax'])
     dmc.df['performance_posttax_cumulative'] = np.cumprod(dmc.df['performance_posttax'])

@@ -1,24 +1,24 @@
 from dual_momentum.dm_component import DualMomentumComponent
 from IPython import embed
-from dual_momentum.ticker_data import TickerData
 from dual_momentum.fred_data import load_fred_data
 import numpy as np
 import pandas as pd
 import hashlib
 from pathlib import Path
-from dual_momentum.dm_config import DATA_PATH
-from dual_momentum.utilities import file_exists_and_less_than_1hr_old
 from dual_momentum.ticker_config import TICKER_CONFIG
 from dual_momentum.ticker_data import TickerData
 import multiprocessing
-import time
 import datetime
+import time
+
+from dual_momentum.storage import write_to_redis, read_from_redis
+
 
 class DualMomentumComposite:
     """
     DualMomentumComposite simulates multiple DM components, e.g. reits and equities
 
-    Takes 0.03seconds
+    Takes 0.03 seconds
 
     """
 
@@ -71,8 +71,6 @@ class DualMomentumComposite:
         self.leverage = leverage
         self.borrowing_cost_above_libor = borrowing_cost_above_libor
 
-        self.libor = load_fred_data('libor_rate')
-
         self.simulation_finished = False
         self.summary = None
 
@@ -91,15 +89,15 @@ class DualMomentumComposite:
         md5 = hashlib.md5(string_to_hash.encode('utf8')).hexdigest()
         return md5
 
-    @property
-    def file_path(self):
-        """
-        filepath for the simulated pickle file
-
-        :return:
-        """
-
-        return Path(DATA_PATH, 'dm_composite_data', f'{self.__hash__()}.pickle')
+    # @property
+    # def file_path(self):
+    #     """
+    #     filepath for the simulated pickle file
+    #
+    #     :return:
+    #     """
+    #
+    #     return Path(DATA_PATH, 'dm_composite_data', f'{self.__hash__()}.pickle')
 
     def preload_data_in_parallel(self):
         """
@@ -152,14 +150,19 @@ class DualMomentumComposite:
     def run_multi_component_dual_momentum(self):
 
 
-        if not self.force_new_data and file_exists_and_less_than_1hr_old(self.file_path):
-            print("using cached dm composite data", self.file_path)
-            self.df = pd.read_pickle(self.file_path)
+        self.df = None
+        if not self.force_new_data:
+            self.df = read_from_redis(key=self.__hash__())
 
-        # if False: pass
+        # if the simulation was cached in redis, use the cached simulation.
+        if self.df is not None:
+            self.simulation_finished = True
+            return self.df
         else:
-
             start_time = time.time()
+            self.libor = load_fred_data('libor_rate', return_type='dict')
+
+
             self.preload_data_in_parallel()
             self.df = TickerData('ONES').data_monthly
             df = self.df
@@ -196,12 +199,8 @@ class DualMomentumComposite:
                 df['taxes'] += component.weight * component.df['taxes']
                 df['cash_portion'] += component.weight * component.df['cash_portion']
 
-
-
             df['leverage'] = 0.0
-            # df['cash'] = 0.0
             df['mmh'] = self.money_market_holding
-            # df['ret_ann_tbil'] = 0.0
             df['leverage_costs'] = 0
             df['lev_performance_pretax'] = 1.0
             df['taxes_month'] = 0.0
@@ -209,8 +208,6 @@ class DualMomentumComposite:
             df['taxes_paid'] = 0.0
             df['lev_performance_posttax'] = 10000
             df['lev_dd'] = 0.0
-            # df['performance_pretax_min_tbil'] = 1.0
-
 
             # pandas dataframes are slow with df.iterrows. It's much faster to turn the df into
             # a dict and then pick values from it
@@ -274,15 +271,6 @@ class DualMomentumComposite:
                     taxes_paid = taxes_due_total
                     taxes_due_total = 0
 
-                # #DUP
-                # df.at[date, 'lev_performance_pretax'] = lev_performance_pretax
-                # df.at[date, 'taxes_month'] = taxes_month
-                # df.at[date, 'taxes_due_total'] = taxes_due_total
-                # df.at[date, 'taxes_paid'] = taxes_paid
-                # df.at[date, 'lev_performance_posttax'] = lev_performance_posttax
-                # df.at[date, 'leverage'] = self.leverage
-                # df.at[date, 'cash'] = max(0, percentage_cash)
-
                 df_as_dict[date]['lev_performance_pretax'] = lev_performance_pretax
                 df_as_dict[date]['taxes_month'] = taxes_month
                 df_as_dict[date]['taxes_due_total'] = taxes_due_total
@@ -292,14 +280,19 @@ class DualMomentumComposite:
                 df_as_dict[date]['cash_portion'] = max(0, percentage_cash)
 
             self.df = pd.DataFrame.from_dict(df_as_dict, orient='index')
-            self.df.to_pickle(self.file_path)
 
+            write_to_redis(key=self.__hash__(), value = self.df, expiration=3600)
             print(f"running dual momentum on composite took {time.time() - start_time}.")
 
         self.simulation_finished = True
         return self.df
 
     def generate_results_summary(self):
+
+
+        self.summary = read_from_redis(f'summary_{self.__hash__()}')
+        if self.summary:
+            return
 
         summary = {}
 
@@ -355,6 +348,8 @@ class DualMomentumComposite:
             if isinstance(val, float):
                 summary[key] = round(val, 4)
         self.summary = summary
+
+        write_to_redis(key=f'summary_{self.__hash__()}', value=summary, expiration=3600)
 
 
     @staticmethod
@@ -498,7 +493,7 @@ if __name__ == '__main__':
                   'state_lt_gains': 0.051}
     # tax_config = {'st_gains': 0.0, 'lt_gains': 0.0, 'federal_tax_rate': 0.0,
     #               'state_tax_rate': 0.0}
-    money_market_holding = 'HYD'
+    money_market_holding = 'VGIT'
     start_date = '1980-01-01'
     leverage = 1
     borrowing_cost_above_libor = 1.5
@@ -533,7 +528,10 @@ if __name__ == '__main__':
 
     dm.run_multi_component_dual_momentum()
     dm.generate_results_summary()
+
+
     print(time.time() - s )
 
+    embed()
 
 

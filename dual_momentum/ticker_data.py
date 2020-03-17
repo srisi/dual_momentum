@@ -9,10 +9,10 @@ import pandas as pd
 import pandas_datareader as pdr
 import pandas_datareader.data as web
 from IPython import embed
-from dual_momentum.dm_config import DATA_PATH
 from dual_momentum.ticker_config import TICKER_CONFIG
-from dual_momentum.utilities import file_exists_and_less_than_1hr_old, file_exists_and_is_from_today
+from dual_momentum.dm_config import DATA_PATH
 
+from dual_momentum.storage import write_to_redis, read_from_redis
 
 class TickerData:
 
@@ -62,16 +62,13 @@ class TickerData:
         if self._data_daily is not None:
             return self._data_daily
 
-        # if pickle data stored in the last hour, or last day for replacement ticker, load it
-        if not self.force_new_data and (
-            file_exists_and_less_than_1hr_old(self.file_path_daily) or
-            (self.is_replacement_ticker and file_exists_and_is_from_today(self.file_path_daily))
-        ):
-            self._data_daily = pd.read_pickle(self.file_path_daily)
+        if not self.force_new_data:
+            self._data_daily = read_from_redis(key=self.redis_key_daily)
 
-        else:
+        if self._data_daily is None:
             self.load_ticker_data() # loads data and updates self._data_daily
-            self._data_daily.to_pickle(self.file_path_daily)
+
+            write_to_redis(key=self.redis_key_daily, value=self._data_daily, expiration=3600)
 
         return self._data_daily
 
@@ -86,25 +83,21 @@ class TickerData:
         if self._data_monthly is not None:
             return self._data_monthly
 
-        # if pickle data stored in the last hour, or last day for replacement ticker, load it
-        if not self.force_new_data and (
-            file_exists_and_less_than_1hr_old(self.file_path_monthly) or
-            (self.is_replacement_ticker and file_exists_and_is_from_today(self.file_path_monthly))
-        ):
-            self._data_monthly = pd.read_pickle(self.file_path_monthly)
+        if not self.force_new_data:
+            self._data_monthly = read_from_redis(key=self.redis_key_monthly)
 
-        else:
+        if self._data_monthly is None:
             # update data_monthly in case the stored version had a different day_of_month...
             self._data_monthly = self.data_daily.groupby(
                 by=[self.data_daily.index.year,self.data_daily.index.month]).nth(
                 self.day_of_the_month_for_monthly_data)
+
             if self.monthly_index_replacement:
                 self.merge_monthly_data_with_index(self.monthly_index_replacement)
 
-            self._data_monthly.to_pickle(self.file_path_monthly)
+            write_to_redis(key=self.redis_key_monthly, value=self._data_monthly, expiration=3600)
 
         return self._data_monthly
-
 
     def __eq__(self, other):
         return (
@@ -118,32 +111,21 @@ class TickerData:
         return str(self.data_daily)
 
     @property
-    def file_path_daily(self):
+    def redis_key_daily(self):
         """
-        Path to the daily data (stored as pd Dataframe)
+        Name for daily returns (for redis)
         :return:
         """
-        return Path(DATA_PATH, 'ticker_data_daily',
-             f'{self.ticker}_replacement_{self.use_early_replacements}.pickle')
+        return f'daily{self.ticker}{self.use_early_replacements}'
 
     @property
-    def file_path_monthly(self):
+    def redis_key_monthly(self):
         """
-        Path to the monthly data (stored as pd Dataframe)
+        Name for monthly returns (for redis)
         :return:
         """
-        return Path(DATA_PATH, 'ticker_data_monthly',
-             f'{self.ticker}_replacement_{self.use_early_replacements}'
-             f'_last_{self.day_of_the_month_for_monthly_data}.pickle')
-
-    @property
-    def file_path_raw_yahoo_data(self):
-        """
-        Path to the raw, unprocessed yahoo data (stored as pd Dataframe)
-        :return:
-        """
-        return Path(DATA_PATH, 'ticker_data_raw_yahoo', f'{self.ticker}.pickle')
-
+        return f'monthly{self.ticker}{self.use_early_replacements}' \
+               f'{self.day_of_the_month_for_monthly_data}'
 
     def load_ticker_data(self):
         """
@@ -154,7 +136,7 @@ class TickerData:
 
         # if just all ones -> load ticker going to 1980 and set it to all ones.
         if self.ticker == 'ONES':
-            self._data_daily = TickerData(ticker='SPY',
+            self._data_daily = TickerData(ticker='EFA',
                                     force_new_data=self.force_new_data,
                                     is_replacement_ticker=True).data_daily
             self._data_daily['Adj Close'] = 1.00
@@ -166,7 +148,6 @@ class TickerData:
             # if we use early replacements, merge daily data with the replacements.
             if self.use_early_replacements and self.early_replacement:
                 self.merge_daily_data_with_early_replacements()
-
 
     def merge_daily_data_with_early_replacements(self):
         """
@@ -181,15 +162,24 @@ class TickerData:
 
         # adjust stock closing price of replacement for a seamless transition to the new ticker.
         first_date = self._data_daily.index[0]
+
+        # TODO: without copying the df, the following code throws an error claiming that
+        #  early_stock_data[c] was readonly. rather strange. copy works but not best performance
+
+        early_stock_data = early_stock_data.copy()
+
         for c in ['Close', 'Adj Close']:
-            early_stock_data[c] *= (self._data_daily[c][first_date] / early_stock_data[c][
-                first_date])
+            try:
+                early_stock_data[c] *= (self._data_daily[c][first_date] / early_stock_data[c][
+                    first_date])
+            except:
+                print("read only error on merge_daily_data_with_early_replacement")
+                embed()
 
         # [:-1] to avoid duplicating the first date
         early_stock_data = early_stock_data[:first_date][:-1]
         self._data_daily = early_stock_data.append(self._data_daily[first_date:], sort=True)
         self._data_daily = self._data_daily['1980-01-01':]
-
 
     def merge_monthly_data_with_index(self, index_csv_name: str):
         """
@@ -199,15 +189,20 @@ class TickerData:
         """
 
         # load index and convert to monthly data
-        index_data = pd.read_csv(Path(DATA_PATH, 'index_data', index_csv_name))
+        index_data = read_from_redis(key=index_csv_name)
+        if index_data is None:
+            index_data = pd.read_csv(Path(DATA_PATH, 'index_data', index_csv_name))
+            write_to_redis(key=index_csv_name, value=index_data, expiration=3600 * 24)
         index_data['Datetime'] = pd.to_datetime(index_data['Date'])
         index_data = index_data.set_index('Datetime')
         index_data = index_data['1980-01-01':]
         index_data = index_data.groupby(by=[index_data.index.year,
                                             index_data.index.month]).nth(-1)
 
+        # index_data = index_data.copy()
+
         first_date = self._data_monthly.index[0]
-        merged_monthly_data = TickerData('ONES').data_monthly
+        merged_monthly_data = TickerData('ONES').data_monthly.copy()
 
         for c in ['Close', 'Adj Close']:
             if self.ticker in ['QVAL', 'IVAL', 'QMOM', 'IMOM']:
@@ -223,7 +218,6 @@ class TickerData:
 
         self._data_monthly = merged_monthly_data
 
-
     def load_raw_data_or_get_from_yahoo(self):
         """
         Loads raw yahoo ticker data either from disk or from yahoo
@@ -234,15 +228,12 @@ class TickerData:
         :return:
         """
 
-        if not self.force_new_data and (
-            file_exists_and_less_than_1hr_old(self.file_path_raw_yahoo_data) or
-            (self.is_replacement_ticker and
-             file_exists_and_is_from_today(self.file_path_raw_yahoo_data))
-        ):
-            print(self.ticker, "disk")
-            stock_data =  pd.read_pickle(self.file_path_raw_yahoo_data)
+        redis_key = f'yahoo_{self.ticker}'
+        stock_data = None
+        if not self.force_new_data:
+            stock_data = read_from_redis(key=redis_key)
 
-        else:
+        if stock_data is None:
             print(self.ticker, "yahoo")
             while True:
                 try:
@@ -250,7 +241,7 @@ class TickerData:
                     stock_data = web.DataReader(self.ticker, data_source='yahoo', start=start_date,
                                                 end=date.today())
                     stock_data.drop(['Open', 'High', 'Low', 'Volume'], inplace=True, axis=1)
-                    stock_data.to_pickle(self.file_path_raw_yahoo_data)
+                    write_to_redis(key=redis_key, value=stock_data, expiration=3600)
                     break
 
                 except pdr._utils.RemoteDataError as e:
@@ -261,5 +252,5 @@ class TickerData:
 
 
 if __name__ == "__main__":
-    t = TickerData('GLD', force_new_data=False, use_early_replacements=True).data_monthly
+    t = TickerData('GLD', force_new_data=False, use_early_replacements=True)
     print(t)
