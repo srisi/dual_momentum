@@ -247,6 +247,7 @@ class TickerData:
                 except pdr._utils.RemoteDataError as e:
                     print(self.ticker, date)
                     print(e)
+                    time.sleep(2)
 
         return stock_data
 
