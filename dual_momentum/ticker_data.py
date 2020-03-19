@@ -235,7 +235,7 @@ class TickerData:
 
         if stock_data is None:
             print(self.ticker, "yahoo")
-            while True:
+            for _ in range(20):
                 try:
                     start_date = '1/1/1980'
                     stock_data = web.DataReader(self.ticker, data_source='yahoo', start=start_date,
