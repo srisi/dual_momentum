@@ -184,3 +184,11 @@ temp_data\.json
 
 
 assets/bundles/
+
+backend/airflow/airflow-webserver\.pid
+
+backend/airflow/airflow\.db
+
+backend/airflow/logs/scheduler/
+
+backend/airflow/unittests\.cfg
