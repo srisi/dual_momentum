@@ -8,9 +8,9 @@ sqlparse==0.3.0
 
 IPython
 numpy
+apache-airflow
 pandas
 pandas_datareader
 pyarrow
 redis
-apache-airflow
 xlrd
