@@ -3,10 +3,10 @@ Setup script for dual_momentum installation
 """
 import sys
 import setuptools
-import pathlib
+from pathlib import Path
 
 
-BASE_PATH = pathlib.Path(__file__).parent.absolute()
+BASE_PATH = Path(__file__).parent.absolute()
 
 
 with open(Path(BASE_PATH, 'requirements.txt')) as f:
