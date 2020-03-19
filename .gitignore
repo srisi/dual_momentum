@@ -192,3 +192,7 @@ backend/airflow/airflow\.db
 backend/airflow/logs/scheduler/
 
 backend/airflow/unittests\.cfg
+
+backend/airflow/airflow_no_version_control\.cfg
+
+backend/airflow/airflow\.cfg

@@ -10,10 +10,6 @@ def load_dual_momentum_ticker_data():
 
     :return:
     """
-    print("here")
-
-    raise ValueError("eeeeeeeeeeeee")
-
     from dual_momentum.ticker_data import TickerData
     from dual_momentum.ticker_config import TICKER_CONFIG
     for ticker in TICKER_CONFIG:
@@ -93,7 +89,7 @@ def load_default_dm_composite():
 
 args = {
     'owner': 'Airflow',
-    'start_date': days_ago(2),
+    'start_date': days_ago(1),
 
     'email_on_failure': True,
     'email': ['stephan.risi@gmail.com']
@@ -101,9 +97,11 @@ args = {
 }
 
 dag = DAG(
-    dag_id='update_dual_mom_data2',
+    dag_id='update_dual_momentum_data',
     default_args=args,
+    catchup=False,
     schedule_interval='*/5 * * * *',
+
 )
 
 dual_momentum_ticker_loader = PythonOperator(
