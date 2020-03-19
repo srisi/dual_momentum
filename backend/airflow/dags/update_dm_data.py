@@ -2,6 +2,8 @@ from airflow.models import DAG
 from airflow.operators.python_operator import PythonOperator
 from airflow.utils.dates import days_ago
 
+import time
+
 
 def load_dual_momentum_ticker_data():
     """
@@ -15,6 +17,8 @@ def load_dual_momentum_ticker_data():
     for ticker in TICKER_CONFIG:
         if ticker == 'TBIL':
             continue
+
+        time.sleep(1)
         print(ticker)
         _ = TickerData(ticker).data_monthly
 
@@ -92,7 +96,7 @@ args = {
     'start_date': days_ago(1),
 
     'email_on_failure': True,
-    'email': ['stephan.risi@gmail.com']
+    'email': ['stephan.risi+aws_errors@gmail.com']
 
 }
 
