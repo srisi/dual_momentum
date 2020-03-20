@@ -116,7 +116,7 @@ class TickerData:
         Name for daily returns (for redis)
         :return:
         """
-        return f'daily{self.ticker}{self.use_early_replacements}'
+        return f'cache_daily{self.ticker}{self.use_early_replacements}'
 
     @property
     def redis_key_monthly(self):
@@ -124,7 +124,7 @@ class TickerData:
         Name for monthly returns (for redis)
         :return:
         """
-        return f'monthly{self.ticker}{self.use_early_replacements}' \
+        return f'cache_monthly{self.ticker}{self.use_early_replacements}' \
                f'{self.day_of_the_month_for_monthly_data}'
 
     def load_ticker_data(self):
@@ -228,7 +228,7 @@ class TickerData:
         :return:
         """
 
-        redis_key = f'yahoo_{self.ticker}'
+        redis_key = f'cache_yahoo_{self.ticker}'
         stock_data = None
         if not self.force_new_data:
             stock_data = read_from_redis(key=redis_key)
