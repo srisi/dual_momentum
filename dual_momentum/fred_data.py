@@ -15,7 +15,7 @@ def load_fred_data(name, return_type='dict'):
     :param name:
     :return:
     """
-    data = read_from_redis(key=f'{name}_{return_type}')
+    data = read_from_redis(key=f'fred_{name}_{return_type}')
     if data is not None:
         print("cache", name, return_type)
         return data
@@ -46,8 +46,8 @@ def load_fred_data(name, return_type='dict'):
     data = parse_index_data(file_path, index_name)
     df = parse_data_into_dataframe(file_path, index_name)
 
-    write_to_redis(key=f'{name}_df', value=df, expiration=3600 * 24)
-    write_to_redis(key=f'{name}_dict', value=data, expiration=3600 * 24)
+    write_to_redis(key=f'fred_{name}_df', value=df, expiration=3600 * 24)
+    write_to_redis(key=f'fred_{name}_dict', value=data, expiration=3600 * 24)
 
     if return_type == 'dict':
         return data

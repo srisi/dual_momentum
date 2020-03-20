@@ -143,7 +143,10 @@ class DualMomentumComponent:
             # initialize df with tbil rates
             tbil_df = load_fred_data('tbil_rate', return_type='df')
             self.df = TickerData('ONES').data_monthly
+
             self.df.drop(['Close', 'Adj Close'], inplace=True, axis=1)
+
+
             self.df['tbil_rate'] = tbil_df['index']
             self.df['tbil_rate'] += 100
             self.df['tbil_performance_pretax'] = (self.df['tbil_rate'] / 100) ** (1 / 12)

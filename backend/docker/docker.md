@@ -31,3 +31,7 @@ See available images<br>
 Run interactive bash session<br>
 (-it -> interactive session. --rm remove on exit. bash -> drop in bash shell)<br>
 `docker run -it --rm dual_momentum_docker bash`
+
+
+Delete all images
+`docker rmi -f $(docker images -a -q)`
