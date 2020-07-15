@@ -4,7 +4,7 @@
 #
 # run with docker run -p 8000:8000 <image> (specify port)
 
-FROM nikolaik/python-nodejs:python3.8-nodejs10 as django-gunicorn
+FROM nikolaik/python-nodejs:python3.8-nodejs10
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \

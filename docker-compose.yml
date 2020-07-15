@@ -17,7 +17,7 @@ services:
 #      "gunicorn --workers=2 --bind=0.0.0.0:8000 mysite.wsgi:application"
 
     depends_on:
-      - redis
+      - data_redis
 
   data_redis:
     image: redis
