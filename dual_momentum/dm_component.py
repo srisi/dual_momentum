@@ -112,17 +112,7 @@ class DualMomentumComponent:
         md5 = hashlib.md5(string_to_hash.encode('utf8')).hexdigest()
         return md5
 
-    # @property
-    # def file_path(self):
-    #     """
-    #     filepath for the simulated pickle file
-    #
-    #     :return:
-    #     """
-    #
-    #     return Path(DATA_PATH, 'dm_component_data', f'{self.__hash__()}.pickle')
 
-    # @profile
     def run_dual_momentum(self):
         """
         Runs a dual-momentum backtest

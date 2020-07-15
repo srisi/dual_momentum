@@ -1,0 +1,40 @@
+version: "3"
+
+services:
+  app:
+    build: .
+    container_name: django-gunicorn
+    restart: always
+
+    volumes:
+        - static-content:/app/assets/bundles/static
+#    env_file:
+#      - django.env
+    ports:
+      - "8000:8000"
+    command:
+      "gunicorn --workers=2 --bind=0.0.0.0:8000 --env DJANGO_SETTINGS_MODULE=config.settings.dev config.wsgi:application"
+#      "gunicorn --workers=2 --bind=0.0.0.0:8000 mysite.wsgi:application"
+
+    depends_on:
+      - data_redis
+
+  data_redis:
+    image: redis
+    container_name: data_redis
+    ports:
+        - "6379:6379"
+
+  nginx:
+    image: nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - static-content:/static
+    depends_on:
+      - app
+
+volumes:
+    static-content:
