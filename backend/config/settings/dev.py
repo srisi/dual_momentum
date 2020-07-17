@@ -15,6 +15,8 @@ SECRET_KEY = 'qqucn931x78rx054n(6g(s_3vxppjw$f24e(9&v6rsbd0&0$2e'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []  # wildcard
+ALLOWED_HOSTS = [
+    'ec2-3-128-78-92.us-east-2.compute.amazonaws.com'
+]  # wildcard
 
 CORS_ORIGIN_ALLOW_ALL = True

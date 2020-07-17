@@ -30,7 +30,8 @@ ENV RUNNING_IN_DOCKER true
 ENV DJANGO_SETTINGS_MODULE config.settings.dev
 
 RUN mkdir -p /app
-RUN git clone https://github.com/srisi/dual_momentum.git /app
+COPY . /app
+#RUN git clone https://github.com/srisi/dual_momentum.git /app
 
 # build react files
 WORKDIR /app/frontend
@@ -48,5 +49,5 @@ RUN pip install -r requirements.txt \
 # set working dir to backend where manage.py lives so gunicorn can find it
 WORKDIR /app/backend
 
-
+CMD ["gunicorn", "--workers=2", "--bind=0.0.0.0:8000", "config.wsgi:application"]
 # CMD ["python", "backend/manage.py", "runserver", "0.0.0.0:8000"]
