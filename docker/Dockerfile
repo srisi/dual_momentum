@@ -30,8 +30,7 @@ ENV RUNNING_IN_DOCKER true
 ENV DJANGO_SETTINGS_MODULE config.settings.dev
 
 RUN mkdir -p /app
-COPY . /app
-#RUN git clone https://github.com/srisi/dual_momentum.git /app
+RUN git clone https://github.com/srisi/dual_momentum.git /app
 
 # build react files
 WORKDIR /app/frontend

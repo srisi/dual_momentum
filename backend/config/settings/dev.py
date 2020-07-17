@@ -16,6 +16,7 @@ SECRET_KEY = 'qqucn931x78rx054n(6g(s_3vxppjw$f24e(9&v6rsbd0&0$2e'
 DEBUG = True
 
 ALLOWED_HOSTS = [
+    'localhost',
     'ec2-3-128-78-92.us-east-2.compute.amazonaws.com'
 ]  # wildcard
 
