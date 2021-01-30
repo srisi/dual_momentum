@@ -1,18 +1,14 @@
+import datetime
 import os
 import time
 from pathlib import Path
-import datetime
+
 import pytz
+
 EASTERN = pytz.timezone('US/Eastern')
-from IPython import embed
 
 def file_exists_and_less_than_1hr_old(file_path: Path) -> bool:
-    """
-    Returns True if a file exists at the path and is less
-    than 1 hour old
-    :param file_path: Path
-    :return: bool
-    """
+    """Returns True if a file exists at the path and is less than 1 hour old."""
 
     if file_path.exists() and (time.time() - os.path.getmtime(str(file_path)) < 3600):
         return True
@@ -21,10 +17,10 @@ def file_exists_and_less_than_1hr_old(file_path: Path) -> bool:
 
 def file_exists_and_is_from_today(file_path: Path) -> bool:
     """
-    Returns True if a file exists at the path and the file is from today
+    Returns True if a file exists at the path and the file is from today.
 
-    :param file_path: Path
-    :return: bool
+    Uses EASTERN timezone as that's the relevant timezone for US stocks.
+
     """
 
     if file_path.exists():

@@ -1,29 +1,29 @@
+import logging
+import time
 from datetime import date
 from pathlib import Path
-import os
-import time
-import pickle
 
 import numpy as np
 import pandas as pd
 import pandas_datareader as pdr
-import pandas_datareader.data as web
-from IPython import embed
+import pandas_datareader.data as datareader_web
 from dual_momentum.dm_config import DATA_PATH
-from dual_momentum.ticker_config import TICKER_CONFIG
-from dual_momentum.utilities import file_exists_and_less_than_1hr_old, file_exists_and_is_from_today
+from dual_momentum.ticker_config import TICKER_CONFIGS
+from dual_momentum.utilities import file_exists_and_is_from_today, file_exists_and_less_than_1hr_old
 
 
 class TickerData:
 
-
-    def __init__(self, ticker, use_early_replacements=True, force_new_data=False,
-                 day_of_month_for_monthly_data=-1,
-                 is_replacement_ticker=False
-                 ):
+    def __init__(
+            self,
+            ticker: str,
+            use_early_replacements: bool=True,
+            force_new_data: bool=False,
+            day_of_month_for_monthly_data: int=-1,
+            is_replacement_ticker: bool=False
+    ):
         """
-        TickerData class holds daily and monthly information for one ticker
-
+        TickerData class holds daily and monthly information for one ticker.
 
         :param ticker: str
         :param use_early_replacements: bool. Whether or not to use early replacements to generate
@@ -34,14 +34,14 @@ class TickerData:
         :param is_replacement_ticker: Is this an early replacement ticker? If so, data needs to be
                                       from today but not from the last hour.
         """
+        ticker_config = TICKER_CONFIGS[ticker]
 
         self.ticker = ticker
-        self.name = TICKER_CONFIG[ticker]['name']
-        self.start_year = TICKER_CONFIG[ticker]['start_year']
-        self.early_replacement = TICKER_CONFIG[ticker]['early_replacement']
-        self.monthly_index_replacement = TICKER_CONFIG[ticker][
-            'early_monthly_index_replacement']
-        self.tax_category = TICKER_CONFIG[ticker]['tax_category']
+        self.name = TICKER_CONFIGS[ticker].name
+        self.start_year = ticker_config.start_year
+        self.early_replacement = ticker_config.early_replacement
+        self.monthly_index_replacement = ticker_config.early_monthly_index_replacement
+        self.tax_category = ticker_config.tax_category
         self.use_early_replacements = use_early_replacements
         self.force_new_data = force_new_data
         self.is_replacement_ticker = is_replacement_ticker
@@ -53,25 +53,17 @@ class TickerData:
 
     @property
     def data_daily(self) -> pd.DataFrame:
-        """
-        Returns a datafram with daily ticker data
-
-        :return:
-        """
+        """Returns a datafram with daily ticker data"""
 
         if self._data_daily is not None:
             return self._data_daily
 
         # if pickle data stored in the last hour, or last day for replacement ticker, load it
-        if not self.force_new_data and (
-            file_exists_and_less_than_1hr_old(self.file_path_daily) or
-            (self.is_replacement_ticker and file_exists_and_is_from_today(self.file_path_daily))
-        ):
+        elif self.stored_data_is_available_and_current(self.file_path_daily):
             self._data_daily = pd.read_pickle(self.file_path_daily)
-
         else:
-            self.load_ticker_data() # loads data and updates self._data_daily
-            self._data_daily.to_pickle(self.file_path_daily)
+            # load data and update self._data_daily
+            self.update_daily_data()
 
         return self._data_daily
 
@@ -87,14 +79,10 @@ class TickerData:
             return self._data_monthly
 
         # if pickle data stored in the last hour, or last day for replacement ticker, load it
-        if not self.force_new_data and (
-            file_exists_and_less_than_1hr_old(self.file_path_monthly) or
-            (self.is_replacement_ticker and file_exists_and_is_from_today(self.file_path_monthly))
-        ):
+        elif self.stored_data_is_available_and_current(self.file_path_monthly):
             self._data_monthly = pd.read_pickle(self.file_path_monthly)
-
         else:
-            # update data_monthly in case the stored version had a different day_of_month...
+            # update data_monthly in case the stored version had a different day_of_month.
             self._data_monthly = self.data_daily.groupby(
                 by=[self.data_daily.index.year,self.data_daily.index.month]).nth(
                 self.day_of_the_month_for_monthly_data)
@@ -105,7 +93,6 @@ class TickerData:
 
         return self._data_monthly
 
-
     def __eq__(self, other):
         return (
             self.ticker == other.ticker and
@@ -114,17 +101,17 @@ class TickerData:
             np.all(self.data_monthly == other.data_monthly)
         )
 
-    def __repr__(self):
-        return str(self.data_daily)
-
     @property
     def file_path_daily(self):
         """
         Path to the daily data (stored as pd Dataframe)
         :return:
         """
-        return Path(DATA_PATH, 'ticker_data_daily',
-             f'{self.ticker}_replacement_{self.use_early_replacements}.pickle')
+        return Path(
+            DATA_PATH,
+            'ticker_data_daily',
+            f'{self.ticker}_replacement_{self.use_early_replacements}.pickle'
+        )
 
     @property
     def file_path_monthly(self):
@@ -132,9 +119,12 @@ class TickerData:
         Path to the monthly data (stored as pd Dataframe)
         :return:
         """
-        return Path(DATA_PATH, 'ticker_data_monthly',
-             f'{self.ticker}_replacement_{self.use_early_replacements}'
-             f'_last_{self.day_of_the_month_for_monthly_data}.pickle')
+        return Path(
+            DATA_PATH,
+            'ticker_data_monthly',
+            f'{self.ticker}_replacement_{self.use_early_replacements}'
+            f'_last_{self.day_of_the_month_for_monthly_data}.pickle'
+        )
 
     @property
     def file_path_raw_yahoo_data(self):
@@ -144,8 +134,29 @@ class TickerData:
         """
         return Path(DATA_PATH, 'ticker_data_raw_yahoo', f'{self.ticker}.pickle')
 
+    def stored_data_is_available_and_current(self, path: Path):
+        """Return True if stored data is available and current.
 
-    def load_ticker_data(self):
+        If force_new_data is True, will always return False.
+        Otherwise, if the data is less than 1 hour old return True.
+        If the ticker is a replacement ticker and the file is from today, return True.
+        Else, return False.
+        """
+
+        if self.force_new_data:
+            return False
+        elif file_exists_and_less_than_1hr_old(path):
+            return True
+        elif (
+            self.is_replacement_ticker and
+            file_exists_and_is_from_today(path)
+        ):
+            return True
+        else:
+            return False
+
+
+    def update_daily_data(self):
         """
         Load the daily data for one ticker including early replacements where necessary.
 
@@ -154,36 +165,34 @@ class TickerData:
 
         # if just all ones -> load ticker going to 1980 and set it to all ones.
         if self.ticker == 'ONES':
-            self._data_daily = TickerData(ticker='SPY',
-                                    force_new_data=self.force_new_data,
-                                    is_replacement_ticker=True).data_daily
-            self._data_daily['Adj Close'] = 1.00
-            self._data_daily['Close'] = 1.00
+            self._data_daily = load_ones_data_daily()
 
         else:
-            self._data_daily = self.load_raw_data_or_get_from_yahoo()
+            self._data_daily = self.load_yahoo_data()
 
             # if we use early replacements, merge daily data with the replacements.
             if self.use_early_replacements and self.early_replacement:
                 self.merge_daily_data_with_early_replacements()
+            self._data_daily.to_pickle(self.file_path_daily)
 
-
-    def merge_daily_data_with_early_replacements(self):
+    def merge_daily_data_with_early_replacements(self) -> None:
         """
-        Merges a ticker with its earlier replacements going back to 1980 where possible
-        If no early replacement, does nothing
-
+        Merges a ticker with its earlier replacements going back to 1980 where possible. Updates
+        self._data_daily. If no early replacement, does nothing.
         """
         # load the data for the early replacement
-        early_stock_data = TickerData(self.early_replacement,
-                                      force_new_data=self.force_new_data,
-                                      use_early_replacements=True).data_daily
+        early_stock_data = TickerData(
+            self.early_replacement,
+            force_new_data=False,
+            use_early_replacements=True
+        ).data_daily
 
         # adjust stock closing price of replacement for a seamless transition to the new ticker.
         first_date = self._data_daily.index[0]
         for c in ['Close', 'Adj Close']:
-            early_stock_data[c] *= (self._data_daily[c][first_date] / early_stock_data[c][
-                first_date])
+            early_stock_data[c] *= (
+                self._data_daily[c][first_date] / early_stock_data[c][first_date]
+            )
 
         # [:-1] to avoid duplicating the first date
         early_stock_data = early_stock_data[:first_date][:-1]
@@ -192,19 +201,16 @@ class TickerData:
 
 
     def merge_monthly_data_with_index(self, index_csv_name: str):
-        """
-
-        :param index_csv_name:
-        :return:
-        """
+        """Merges monthly data with an index and updates self._data_monthly."""
 
         # load index and convert to monthly data
         index_data = pd.read_csv(Path(DATA_PATH, 'index_data', index_csv_name))
         index_data['Datetime'] = pd.to_datetime(index_data['Date'])
         index_data = index_data.set_index('Datetime')
         index_data = index_data['1980-01-01':]
-        index_data = index_data.groupby(by=[index_data.index.year,
-                                            index_data.index.month]).nth(-1)
+        index_data = index_data.groupby(
+            by=[index_data.index.year, index_data.index.month]
+        ).nth(-1)
 
         first_date = self._data_monthly.index[0]
         merged_monthly_data = TickerData('ONES').data_monthly
@@ -224,42 +230,49 @@ class TickerData:
         self._data_monthly = merged_monthly_data
 
 
-    def load_raw_data_or_get_from_yahoo(self):
-        """
-        Loads raw yahoo ticker data either from disk or from yahoo
+    def load_yahoo_data(self):
+        """Return raw yahoo ticker data either from disk or from yahoo"""
 
-        :param ticker:
-        :param force_new_data: bool
-        :param multiprocessing.Queue
-        :return:
-        """
-
-        if not self.force_new_data and (
-            file_exists_and_less_than_1hr_old(self.file_path_raw_yahoo_data) or
-            (self.is_replacement_ticker and
-             file_exists_and_is_from_today(self.file_path_raw_yahoo_data))
-        ):
-            print(self.ticker, "disk")
-            stock_data =  pd.read_pickle(self.file_path_raw_yahoo_data)
-
+        if self.stored_data_is_available_and_current(self.file_path_raw_yahoo_data):
+            return pd.read_pickle(self.file_path_raw_yahoo_data)
         else:
-            print(self.ticker, "yahoo")
-            while True:
-                try:
-                    start_date = '1/1/1980'
-                    stock_data = web.DataReader(self.ticker, data_source='yahoo', start=start_date,
-                                                end=date.today())
-                    stock_data.drop(['Open', 'High', 'Low', 'Volume'], inplace=True, axis=1)
-                    stock_data.to_pickle(self.file_path_raw_yahoo_data)
-                    break
+            return self.fetch_and_store_data_from_yahoo()
 
-                except pdr._utils.RemoteDataError as e:
-                    print(self.ticker, date)
-                    print(e)
+    def fetch_and_store_data_from_yahoo(
+        self,
+        max_attempts: int=20,
+        timeout_between_attempts: int=5,
+    ) -> pd.DataFrame:
+        """Fetch data for the ticker from Yahoo and store it with pickle."""
+
+        logging.info(f'Fetching {self.ticker} from Yahoo.')
+
+        for i in range(max_attempts):
+            try:
+                start_date = '1/1/1980'
+                stock_data = datareader_web.DataReader(
+                    self.ticker, data_source='yahoo', start=start_date, end=date.today()
+                )
+                stock_data.drop(['Open', 'High', 'Low', 'Volume'], inplace=True, axis=1)
+                stock_data.to_pickle(self.file_path_raw_yahoo_data)
+                break
+
+            except Exception as e:
+                logging.exception(
+                    f'Unexpected exception while fetching data for {self.ticker} from yahoo: {e}'
+                )
+                if i + 1 == max_attempts:
+                    raise e
+                time.sleep(timeout_between_attempts)
 
         return stock_data
 
 
-if __name__ == "__main__":
-    t = TickerData('GLD', force_new_data=False, use_early_replacements=True).data_monthly
-    print(t)
+def load_ones_data_daily() -> pd.DataFrame:
+    """Return a dataframe starting in 1980 for ticker ONES, consisting only of values 1.00."""
+
+    df = TickerData(ticker='VFINX', force_new_data=False, is_replacement_ticker=True).data_daily
+    df['Adj Close'] = 1.00
+    df['Close'] = 1.00
+
+    return df

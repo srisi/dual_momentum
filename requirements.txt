@@ -5,9 +5,11 @@ djangorestframework==3.10.1
 IPython
 pytz==2019.1
 sqlparse==0.3.0
-
 IPython
 numpy
 pandas
 pandas_datareader
 pyarrow
+pytest
+pytest-cov
+coverage

@@ -1,6 +1,6 @@
 from IPython import embed
 from dual_momentum.ticker_data import TickerData
-from dual_momentum.ticker_config import TICKER_CONFIG
+from dual_momentum.ticker_config import TICKER_CONFIGS
 from dual_momentum.dm_config import DATA_PATH
 import pandas as pd
 from pathlib import Path
@@ -66,8 +66,8 @@ def get_tax_rates_by_ticker(tax_rates: dict, ticker_list: list):
         # e.g. VTI
         if isinstance(t, str):
             ticker = t
-            if ticker in TICKER_CONFIG:
-                tax_category = TICKER_CONFIG[ticker]['tax_category']
+            if ticker in TICKER_CONFIGS:
+                tax_category = TICKER_CONFIGS[ticker]['tax_category']
             else:
                 raise ValueError(val_error)
         elif isinstance(t, dict):

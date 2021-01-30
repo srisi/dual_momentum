@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view
 
 from django.http import JsonResponse, HttpResponse
 
-from dual_momentum.ticker_config import TICKER_CONFIG
+from dual_momentum.ticker_config import TICKER_CONFIGS
 import time
 import json
 
@@ -17,7 +17,7 @@ from IPython import embed
 def get_test_data(request):
 
     ticker_suggestions = {}
-    for ticker, config in TICKER_CONFIG.items():
+    for ticker, config in TICKER_CONFIGS.items():
         if config['suggest_in_search']:
             ticker_suggestions[config['name']] = ticker
 

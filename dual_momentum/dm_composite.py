@@ -8,7 +8,7 @@ import hashlib
 from pathlib import Path
 from dual_momentum.dm_config import DATA_PATH
 from dual_momentum.utilities import file_exists_and_less_than_1hr_old
-from dual_momentum.ticker_config import TICKER_CONFIG
+from dual_momentum.ticker_config import TICKER_CONFIGS
 from dual_momentum.ticker_data import TickerData
 import multiprocessing
 import time
@@ -119,11 +119,11 @@ class DualMomentumComposite:
 
                 tickers_to_init.add(ticker)
                 while True:
-                    early_replacement = TICKER_CONFIG[ticker]['early_replacement']
+                    early_replacement = TICKER_CONFIGS[ticker]['early_replacement']
                     if not early_replacement:
                         break
                     else:
-                        ticker = TICKER_CONFIG[ticker]['early_replacement']
+                        ticker = TICKER_CONFIGS[ticker]['early_replacement']
                         tickers_to_init.add(ticker)
 
         if 'ONES' in tickers_to_init: tickers_to_init.remove('ONES')
@@ -323,7 +323,7 @@ class DualMomentumComposite:
                 summary[f'max_dd_date_{name}_{tax_type}_str'] = datetime.datetime(
                     max_dd_date[0], max_dd_date[1], 1).strftime("%b %Y")
 
-                returns = self.df[f'performance_{name}_{tax_type}_cumulative'][-1] - 1
+                returns = self.df[f'performance_{name}_{tax_type}_cumulative'].iat[-1] - 1
                 summary[f'total_returns_{name}_{tax_type}'] = returns
                 cagr = returns ** (1 / ((len(self.df) - self.max_lookback_months) / 12))
                 summary[f'cagr_{name}_{tax_type}'] = cagr
@@ -529,7 +529,7 @@ if __name__ == '__main__':
                                start_date=start_date,
                                leverage=leverage,
                                borrowing_cost_above_libor=borrowing_cost_above_libor,
-                               force_new_data=False)
+                               force_new_data=True)
 
     dm.run_multi_component_dual_momentum()
     dm.generate_results_summary()
